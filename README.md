@@ -119,6 +119,30 @@ Hoặc chép file APK sang điện thoại rồi bấm cài (phải bật "Cài 
 Lặp lại cho từng điện thoại — mỗi máy cần một mã ghép đôi riêng (mã dùng một lần,
 hết hạn sau 10 phút).
 
+### Gỡ app rồi cài lại
+
+Token nằm trong dữ liệu app nên gỡ app là mất, phải ghép đôi lại. Nhưng **từ v1.2 máy đó
+được nhận lại đúng chỗ cũ**: không sinh thêm dòng trùng lặp trên dashboard, lịch sử thông
+báo giữ nguyên, token cũ bị vô hiệu.
+
+Cách nhận diện: app gửi kèm mã băm SHA-256 của `ANDROID_ID`. Từ Android 8 trở lên giá trị
+này riêng theo bộ (khoá ký app, tài khoản người dùng, máy) và **giữ nguyên qua các lần
+gỡ/cài lại**, chỉ đổi khi khôi phục cài đặt gốc. Server không bao giờ thấy `ANDROID_ID`
+thật, chỉ thấy bản đã băm.
+
+> **Máy ghép đôi từ trước v1.2** không có mã này. Lần đầu nâng lên v1.2 và ghép đôi lại,
+> chúng vẫn sinh ra một dòng mới — xoá dòng cũ **một lần** bằng nút **Quản lý** (mục dưới).
+> Từ đó về sau không phải làm gì nữa.
+
+### Quản lý điện thoại trên dashboard
+
+Bấm **Quản lý** ở cạnh mục ĐIỆN THOẠI trong thanh bên:
+
+- **Đổi tên** — bấm thẳng vào tên, sửa, rồi Enter hoặc bấm ra ngoài
+- **Xoá** — cần bấm hai lần, lần đầu nút đổi thành *"Xoá cả N thông báo?"*
+
+Xoá một máy sẽ xoá luôn toàn bộ thông báo của máy đó và vô hiệu token của nó.
+
 ### Chế độ ngủ
 
 Dành cho trường hợp bạn để hẳn một máy cũ cắm sạc làm trạm trung chuyển. Bật công tắc
@@ -232,6 +256,7 @@ android/app/src/main/java/com/notifybridge/
   service/NotifyListenerService.kt   bắt + lọc + chống trùng thông báo
   data/Outbox.kt                     hàng đợi SQLite
   data/Prefs.kt                      cài đặt
+  data/DeviceId.kt                   mã băm ANDROID_ID để nhận lại máy sau khi cài lại
   net/Api.kt, net/Uploader.kt        gọi server, gom lô, thử lại
   work/UploadWorker.kt               lưới an toàn 15 phút + backoff
   ui/SleepMode.kt                    ép độ sáng tối thiểu + giữ màn hình sáng

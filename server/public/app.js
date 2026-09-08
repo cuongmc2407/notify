@@ -240,7 +240,6 @@ function renderFeed() {
 
 function renderSidebar() {
   $('allCount').textContent = state.totals.total ? String(state.totals.total) : '';
-  $('deviceCount').textContent = state.devices.length ? String(state.devices.length) : '';
 
   $('deviceList').innerHTML = state.devices.length
     ? state.devices
@@ -337,6 +336,8 @@ async function loadSidebar() {
     state.apps = stats.apps;
     state.totals = { total: stats.total, unread: stats.unread };
     renderSidebar();
+    // Modal quan ly dang mo thi cap nhat luon (vi du may vua ghep doi lai).
+    if (!$('devicesModal').hidden) renderDeviceManager();
   } catch (err) {
     if (err.message !== 'unauthorized') toast(err.message, true);
   }
@@ -465,6 +466,156 @@ function handleWsEvent(msg) {
     default:
       break;
   }
+}
+
+/* ============ quan ly dien thoai ============ */
+
+function renderDeviceManager() {
+  const list = $('deviceManageList');
+
+  if (!state.devices.length) {
+    list.innerHTML = '<div class="dev-empty">Chưa ghép điện thoại nào.</div>';
+    return;
+  }
+
+  list.innerHTML = state.devices
+    .map((d) => {
+      const seen = d.lastSeenAt ? relTime(d.lastSeenAt) : 'chưa bao giờ';
+      const meta = [
+        d.online ? 'đang hoạt động' : 'lần cuối ' + seen,
+        d.model || 'không rõ máy',
+        d.total + ' thông báo',
+      ].join(' · ');
+      return (
+        '<div class="dev-row">' +
+        '<span class="status-dot' + (d.online ? ' online' : '') + '"></span>' +
+        '<div class="dev-main">' +
+        '<input class="dev-name" data-rename="' + escapeHtml(d.id) + '" value="' + escapeHtml(d.name) + '" maxlength="80" />' +
+        '<div class="dev-meta">' + escapeHtml(meta) + '</div>' +
+        '</div>' +
+        '<button class="dev-del" data-remove="' + escapeHtml(d.id) + '" data-total="' + d.total + '">Xoá</button>' +
+        '</div>'
+      );
+    })
+    .join('');
+}
+
+async function openDevicesModal() {
+  $('devicesModal').hidden = false;
+  await loadSidebar();
+  renderDeviceManager();
+}
+
+// Duoc gan trong bindDeviceManager(); goi truoc khi dong modal.
+let saveAllPendingNames = () => {};
+
+function closeDevicesModal() {
+  if ($('devicesModal').hidden) return;
+  saveAllPendingNames();
+  $('devicesModal').hidden = true;
+}
+
+function bindDeviceManager() {
+  $('manageDevicesBtn').addEventListener('click', openDevicesModal);
+  $('devicesClose').addEventListener('click', closeDevicesModal);
+  $('devicesModal').addEventListener('click', (e) => {
+    if (e.target === $('devicesModal')) closeDevicesModal();
+  });
+
+  // Doi ten: luu khi roi o nhap hoac bam Enter.
+  const saveName = async (input) => {
+    const id = input.dataset.rename;
+    const device = state.devices.find((d) => d.id === id);
+    const name = input.value.trim();
+    if (!device || !name || name === device.name) {
+      if (device) input.value = device.name;
+      return;
+    }
+    try {
+      await api('/api/devices/' + encodeURIComponent(id), {
+        method: 'PATCH',
+        body: JSON.stringify({ name }),
+      });
+      device.name = name;
+      toast('Đã đổi tên thành "' + name + '"');
+      renderSidebar();
+      // Ten may hien trong tung the thong bao -> tai lai feed cho khop.
+      loadFeed(true);
+    } catch (err) {
+      toast(err.message, true);
+      input.value = device.name;
+    }
+  };
+
+  $('deviceManageList').addEventListener('blur', (e) => {
+    if (e.target.dataset?.rename) saveName(e.target);
+  }, true);
+
+  $('deviceManageList').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && e.target.dataset?.rename) e.target.blur();
+    if (e.key === 'Escape') closeDevicesModal();
+  });
+
+  // Dong modal bang Esc / bam ra ngoai thi blur co the khong kip chay,
+  // nen luu not moi o ten dang sua do dang - tranh mat ten ma khong bao gi.
+  saveAllPendingNames = () => {
+    for (const input of $('deviceManageList').querySelectorAll('[data-rename]')) {
+      saveName(input);
+    }
+  };
+
+  // Xoa can hai lan bam: lan dau nut doi thanh "Chac chan xoa?", lan hai moi xoa that.
+  // Tranh dung confirm() cua trinh duyet - de bi chan va trong tho.
+  let armed = null;
+  let armedTimer = null;
+
+  const disarm = () => {
+    clearTimeout(armedTimer);
+    armed = null;
+    renderDeviceManager();
+  };
+
+  $('deviceManageList').addEventListener('click', async (e) => {
+    const btn = e.target.closest('[data-remove]');
+    if (!btn) return;
+
+    const id = btn.dataset.remove;
+    const total = Number(btn.dataset.total) || 0;
+
+    if (armed !== id) {
+      clearTimeout(armedTimer);
+      armed = id;
+
+      // Ve lai ca danh sach truoc, de nut cua may khac dang o trang thai
+      // "chac chan xoa?" tro lai binh thuong.
+      renderDeviceManager();
+
+      const fresh = $('deviceManageList').querySelector('[data-remove="' + CSS.escape(id) + '"]');
+      if (fresh) {
+        fresh.textContent = total > 0 ? 'Xoá cả ' + total + ' thông báo?' : 'Chắc chắn xoá?';
+        fresh.style.background = 'var(--red)';
+        fresh.style.color = '#fff';
+        fresh.style.borderColor = 'var(--red)';
+      }
+      armedTimer = setTimeout(disarm, 5000);
+      return;
+    }
+
+    clearTimeout(armedTimer);
+    armed = null;
+
+    try {
+      await api('/api/devices/' + encodeURIComponent(id), { method: 'DELETE' });
+      toast('Đã xoá điện thoại');
+      if (state.filter.device === id) setFilter({ device: null });
+      await loadSidebar();
+      renderDeviceManager();
+      loadFeed(true);
+    } catch (err) {
+      toast(err.message, true);
+      renderDeviceManager();
+    }
+  });
 }
 
 /* ============ ghep doi ============ */
@@ -661,6 +812,9 @@ function bind() {
     }
   });
 
+  // Quan ly dien thoai
+  bindDeviceManager();
+
   // Ghep doi
   $('pairBtn').addEventListener('click', openPairModal);
   $('pairClose').addEventListener('click', closePairModal);
@@ -676,7 +830,10 @@ function bind() {
   });
 
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') closePairModal();
+    if (e.key === 'Escape') {
+      closePairModal();
+      closeDevicesModal();
+    }
     if (e.key === '/' && document.activeElement !== $('search')) {
       e.preventDefault();
       $('search').focus();

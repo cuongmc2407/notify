@@ -48,8 +48,16 @@ const touchDevice = db.prepare('UPDATE devices SET last_seen_at = ? WHERE id = ?
 const findCode = db.prepare('SELECT * FROM pairing_codes WHERE code = ?');
 const useCode = db.prepare('UPDATE pairing_codes SET used_at = ? WHERE code = ?');
 const insertDevice = db.prepare(`
-  INSERT INTO devices (id, name, model, android_version, token_hash, created_at, last_seen_at, enabled)
-  VALUES (?, ?, ?, ?, ?, ?, ?, 1)
+  INSERT INTO devices (id, name, model, android_version, token_hash, hardware_id, created_at, last_seen_at, enabled)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)
+`);
+
+const findByHardware = db.prepare('SELECT * FROM devices WHERE hardware_id = ?');
+
+const reissueToken = db.prepare(`
+  UPDATE devices
+     SET name = ?, model = ?, android_version = ?, token_hash = ?, last_seen_at = ?, enabled = 1
+   WHERE id = ?
 `);
 
 router.post('/pair', (req, res) => {
@@ -64,27 +72,40 @@ router.post('/pair', (req, res) => {
     return res.status(400).json({ error: 'bad_code', message: 'Ma khong dung hoac da het han' });
   }
 
-  const id = crypto.randomUUID();
   const token = newDeviceToken();
   const name = str(req.body?.deviceName, 80) || str(req.body?.model, 80) || 'Dien thoai';
+  const model = str(req.body?.model, 80);
+  const androidVersion = str(req.body?.androidVersion, 40);
+
+  // Dinh danh phan cung (bam tu ANDROID_ID) giup nhan ra van la may cu sau khi
+  // go app cai lai. Khong co no thi moi lan ghep doi lai se de ra mot may trung lap.
+  const hardwareId = str(req.body?.hardwareId, 128);
+  const existing = hardwareId ? findByHardware.get(hardwareId) : null;
+
+  if (existing) {
+    db.transaction(() => {
+      useCode.run(now, code);
+      reissueToken.run(name, model, androidVersion, hashToken(token), now, existing.id);
+    })();
+
+    const updated = db.prepare('SELECT * FROM devices WHERE id = ?').get(existing.id);
+    hub.broadcast('device_updated', publicDevice(updated));
+
+    // reused = true: token cu da bi vo hieu, lich su thong bao van giu nguyen.
+    return res.json({ deviceId: existing.id, token, deviceName: name, reused: true, serverTime: now });
+  }
+
+  const id = crypto.randomUUID();
 
   db.transaction(() => {
     useCode.run(now, code);
-    insertDevice.run(
-      id,
-      name,
-      str(req.body?.model, 80),
-      str(req.body?.androidVersion, 40),
-      hashToken(token),
-      now,
-      now
-    );
+    insertDevice.run(id, name, model, androidVersion, hashToken(token), hardwareId, now, now);
   })();
 
   const device = db.prepare('SELECT * FROM devices WHERE id = ?').get(id);
   hub.broadcast('device_added', publicDevice(device));
 
-  res.json({ deviceId: id, token, deviceName: name, serverTime: now });
+  res.json({ deviceId: id, token, deviceName: name, reused: false, serverTime: now });
 });
 
 function publicDevice(d) {

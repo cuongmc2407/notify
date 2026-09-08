@@ -28,6 +28,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import com.notifybridge.data.DeviceId
 import com.notifybridge.data.Prefs
 import com.notifybridge.net.Api
 import com.notifybridge.net.Uploader
@@ -112,6 +113,7 @@ fun PairScreen(
                                     deviceName = name.trim().ifEmpty { Prefs.defaultDeviceName() },
                                     model = Build.MODEL ?: "",
                                     androidVersion = Build.VERSION.RELEASE ?: "",
+                                    hardwareId = DeviceId.hardwareId(context),
                                 )
                             }
                         }
@@ -125,7 +127,10 @@ fun PairScreen(
                                 prefs.deviceName = pair.deviceName
                                 prefs.lastError = null
                                 Uploader.sendHeartbeat(context)
-                                snackbar.showSnackbar("Đã ghép đôi thành công")
+                                snackbar.showSnackbar(
+                                    if (pair.reused) "Đã nhận lại máy cũ — giữ nguyên lịch sử thông báo"
+                                    else "Đã ghép đôi thành công"
+                                )
                                 onPaired()
                             }
                             .onFailure { e ->

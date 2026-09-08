@@ -17,7 +17,13 @@ object Api {
 
     class ApiException(val code: Int, message: String) : Exception(message)
 
-    data class PairResult(val deviceId: String, val token: String, val deviceName: String)
+    data class PairResult(
+        val deviceId: String,
+        val token: String,
+        val deviceName: String,
+        /** true = server nhan ra may cu va cap lai token, khong tao them may moi. */
+        val reused: Boolean,
+    )
 
     /** Ghep doi bang ma 6 so lay tu web dashboard. */
     fun pair(
@@ -26,18 +32,21 @@ object Api {
         deviceName: String,
         model: String,
         androidVersion: String,
+        hardwareId: String,
     ): PairResult {
         val body = JSONObject()
             .put("code", code)
             .put("deviceName", deviceName)
             .put("model", model)
             .put("androidVersion", androidVersion)
+            .put("hardwareId", hardwareId)
 
         val json = post("$baseUrl/api/pair", null, body.toString())
         return PairResult(
             deviceId = json.optString("deviceId"),
             token = json.optString("token"),
             deviceName = json.optString("deviceName", deviceName),
+            reused = json.optBoolean("reused", false),
         )
     }
 

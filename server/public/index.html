@@ -38,7 +38,7 @@
 
         <div class="side-head">
           <span>Điện thoại</span>
-          <span id="deviceCount"></span>
+          <button class="side-manage" id="manageDevicesBtn" title="Đổi tên hoặc xoá điện thoại">Quản lý</button>
         </div>
         <div id="deviceList"></div>
 
@@ -54,6 +54,20 @@
     </div>
 
     <div class="toasts" id="toasts"></div>
+
+    <div class="modal-back" id="devicesModal" hidden>
+      <div class="modal">
+        <h2>Quản lý điện thoại</h2>
+        <p class="sub">
+          Gỡ app rồi cài lại trên cùng một máy thì máy đó được nhận lại đúng chỗ cũ, không sinh
+          thêm dòng mới. Các máy trùng lặp từ trước có thể xoá ở đây.
+        </p>
+        <div id="deviceManageList"></div>
+        <div class="modal-actions">
+          <button class="btn btn-primary" id="devicesClose">Xong</button>
+        </div>
+      </div>
+    </div>
 
     <div class="modal-back" id="pairModal" hidden>
       <div class="modal">

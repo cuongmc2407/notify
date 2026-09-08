@@ -23,6 +23,7 @@ CREATE TABLE IF NOT EXISTS devices (
   model           TEXT,
   android_version TEXT,
   token_hash      TEXT NOT NULL,
+  hardware_id     TEXT,
   created_at      INTEGER NOT NULL,
   last_seen_at    INTEGER,
   enabled         INTEGER NOT NULL DEFAULT 1
@@ -65,6 +66,18 @@ CREATE TABLE IF NOT EXISTS settings (
   value TEXT
 );
 `);
+
+/* ---------- nang cap luoc do cho CSDL tao tu ban cu ---------- */
+
+const deviceColumns = db.prepare('PRAGMA table_info(devices)').all().map((c) => c.name);
+if (!deviceColumns.includes('hardware_id')) {
+  db.exec('ALTER TABLE devices ADD COLUMN hardware_id TEXT');
+}
+
+// Khong dat UNIQUE: ALTER TABLE cua SQLite khong them duoc rang buoc,
+// va cac may ghep truoc ban 1.2 deu co hardware_id = NULL. Tinh duy nhat
+// duoc bao dam o routes/device.js khi ghep doi.
+db.exec('CREATE INDEX IF NOT EXISTS idx_devices_hardware ON devices (hardware_id)');
 
 /* ---------- settings ---------- */
 
