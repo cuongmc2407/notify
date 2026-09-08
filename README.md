@@ -21,7 +21,8 @@ Server chạy trên Linux, mở ra ngoài bằng **Cloudflare Tunnel**.
 - Thông báo desktop + tiếng chuông khi có tin mới
 - Hàng đợi offline: mất mạng thì giữ lại, có mạng gửi đủ, không trùng
 - Bộ lọc bật/tắt từng ứng dụng, kèm nút bật/tắt hàng loạt (theo cả kết quả tìm kiếm)
-- Chế độ ngủ: khoá máy lại làm trạm trung chuyển — tối nhất, chặn chạm nhầm, không thoát ra được
+- Chế độ ngủ: khoá máy lại làm trạm trung chuyển — tối nhất, hiện % pin, chặn chạm nhầm, không rơi vào màn hình khoá
+- Dashboard hiện mức pin từng điện thoại, đỏ khi sắp hết
 - Mỗi máy một token riêng; web đăng nhập bằng mật khẩu
 
 ---
@@ -149,11 +150,20 @@ Dành cho trường hợp bạn để hẳn một máy cũ cắm sạc làm tr�
 **Chế độ ngủ** trong tab Trạng thái thì máy bị khoá lại:
 
 - Độ sáng ép xuống **mức thấp nhất máy cho phép**, màn hình phủ đen
+- **Hiện phần trăm pin** to giữa màn hình, có dấu ⚡ khi đang sạc, đỏ khi ≤ 15%
 - Màn hình **không bao giờ tự tắt** → hệ thống không ngủ, thông báo về gần như tức thì
+- **Không bao giờ rơi vào màn hình khoá** — app hiện đè lên keyguard
 - **Chặn toàn bộ cảm ứng** — bỏ vào túi hay để trẻ con nghịch cũng không bấm nhầm được gì
 - **Ghim màn hình**: nút Home, Quay lại, Tổng quan đều không thoát ra được
 
 Thông báo vẫn được nhận và gửi đi bình thường trong lúc khoá.
+
+> **Vì sao phải hiện đè lên màn hình khoá.** `FLAG_KEEP_SCREEN_ON` chỉ còn tác dụng khi
+> activity đang hiện. Nếu keyguard trùm lên (bấm nhầm nút nguồn, hoặc hệ thống tự khoá),
+> activity bị che → cờ đó hết tác dụng → màn hình tắt → máy Xiaomi/Oppo giết tiến trình →
+> **mất thông báo** cho tới lần quét định kỳ 15 phút sau. Từ v1.4 app hiện đè lên keyguard
+> nên chuỗi này bị cắt từ gốc: tắt/bật màn hình bằng nút nguồn vẫn quay thẳng về app,
+> không phải mở khoá máy.
 
 **Mở khoá: giữ tay 3 giây lên màn hình.** Chạm nhanh không ăn thua.
 
@@ -269,6 +279,7 @@ android/app/src/main/java/com/notifybridge/
   data/Outbox.kt                     hàng đợi SQLite
   data/Prefs.kt                      cài đặt
   data/DeviceId.kt                   mã băm ANDROID_ID để nhận lại máy sau khi cài lại
+  data/Battery.kt                    đọc % pin (ưu tiên giá trị thanh trạng thái hiển thị)
   net/Api.kt, net/Uploader.kt        gọi server, gom lô, thử lại
   work/UploadWorker.kt               lưới an toàn 15 phút + backoff
   ui/SleepMode.kt                    ép độ sáng tối thiểu, giữ màn hình sáng, ghim màn hình

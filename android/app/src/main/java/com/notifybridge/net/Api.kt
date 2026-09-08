@@ -51,15 +51,32 @@ object Api {
     }
 
     /** Gui mot lo thong bao. Tra ve so ban ghi server ghi nhan moi. */
-    fun upload(baseUrl: String, token: String, events: JSONArray): Int {
+    fun upload(
+        baseUrl: String,
+        token: String,
+        events: JSONArray,
+        battery: Int = -1,
+        charging: Boolean = false,
+    ): Int {
         val body = JSONObject().put("events", events)
+        putBattery(body, battery, charging)
         val json = post("$baseUrl/api/notifications", token, body.toString())
         return json.optInt("accepted", 0)
     }
 
-    /** Bao cho server biet may van dang song. */
-    fun heartbeat(baseUrl: String, token: String) {
-        post("$baseUrl/api/heartbeat", token, "{}")
+    /** Bao cho server biet may van dang song, kem muc pin. */
+    fun heartbeat(baseUrl: String, token: String, battery: Int = -1, charging: Boolean = false) {
+        val body = JSONObject()
+        putBattery(body, battery, charging)
+        post("$baseUrl/api/heartbeat", token, body.toString())
+    }
+
+    /** Chi gui khi doc duoc pin, de server phan biet "chua biet" voi "0%". */
+    private fun putBattery(body: JSONObject, battery: Int, charging: Boolean) {
+        if (battery in 0..100) {
+            body.put("battery", battery)
+            body.put("charging", charging)
+        }
     }
 
     private fun post(url: String, token: String?, body: String): JSONObject {

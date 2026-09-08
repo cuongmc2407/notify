@@ -27,6 +27,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.notifybridge.data.rememberBatteryState
 import kotlinx.coroutines.withTimeoutOrNull
 
 /** Phai giu tay bao lau moi mo khoa. Du dai de khong bao gio cham nham. */
@@ -81,6 +82,29 @@ fun SleepOverlay(onUnlock: () -> Unit) {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
+            // Pin la thu duy nhat de to: may cam sac ca ngay thi can liec mot cai
+            // la biet no con song hay sap het.
+            val battery by rememberBatteryState()
+            if (battery.percent >= 0) {
+                Text(
+                    (if (battery.charging) "⚡ " else "") + battery.percent + "%",
+                    color = when {
+                        battery.charging -> Color(0xFF34C77B).copy(alpha = 0.75f)
+                        battery.percent <= 15 -> Color(0xFFF0736F).copy(alpha = 0.85f)
+                        else -> Color.White.copy(alpha = 0.6f)
+                    },
+                    fontSize = 34.sp,
+                    textAlign = TextAlign.Center,
+                )
+                Text(
+                    if (battery.charging) "đang sạc" else "không sạc",
+                    color = Color.White.copy(alpha = 0.28f),
+                    fontSize = 11.sp,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(bottom = 14.dp),
+                )
+            }
+
             Text(
                 "Chế độ ngủ",
                 color = Color.White.copy(alpha = 0.55f),

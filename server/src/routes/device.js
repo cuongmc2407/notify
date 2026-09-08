@@ -43,6 +43,22 @@ function str(value, maxLen = MAX_FIELD_LEN) {
 
 const touchDevice = db.prepare('UPDATE devices SET last_seen_at = ? WHERE id = ?');
 
+const updateBattery = db.prepare(
+  'UPDATE devices SET battery_level = ?, battery_charging = ?, battery_at = ? WHERE id = ?'
+);
+
+/**
+ * Ghi lai muc pin neu dien thoai co gui kem. Khong gui thi giu nguyen gia tri cu,
+ * de phan biet "chua bao gio biet" voi "vua bao la 0%".
+ */
+function recordBattery(deviceId, body, now) {
+  const level = Number(body?.battery);
+  if (!Number.isInteger(level) || level < 0 || level > 100) return null;
+  const charging = body?.charging ? 1 : 0;
+  updateBattery.run(level, charging, now, deviceId);
+  return { level, charging: Boolean(charging), at: now };
+}
+
 /* ---------- POST /api/pair ---------- */
 
 const findCode = db.prepare('SELECT * FROM pairing_codes WHERE code = ?');
@@ -117,6 +133,9 @@ function publicDevice(d) {
     createdAt: d.created_at,
     lastSeenAt: d.last_seen_at,
     enabled: Boolean(d.enabled),
+    battery: Number.isInteger(d.battery_level) ? d.battery_level : null,
+    charging: Boolean(d.battery_charging),
+    batteryAt: d.battery_at || null,
   };
 }
 
@@ -178,6 +197,8 @@ router.post('/notifications', requireDeviceAuth, rateLimit, (req, res) => {
     touchDevice.run(now, deviceId);
   })();
 
+  const battery = recordBattery(deviceId, req.body, now);
+
   if (inserted.length) {
     const placeholders = inserted.map(() => '?').join(',');
     const rows = db
@@ -190,7 +211,12 @@ router.post('/notifications', requireDeviceAuth, rateLimit, (req, res) => {
     for (const row of rows) hub.broadcast('notification', publicNotification(row));
   }
 
-  hub.broadcast('device_seen', { id: deviceId, lastSeenAt: now });
+  hub.broadcast('device_seen', {
+    id: deviceId,
+    lastSeenAt: now,
+    battery: battery?.level ?? null,
+    charging: battery?.charging ?? null,
+  });
 
   res.json({ accepted: inserted.length, received: events.length, serverTime: now });
 });
@@ -217,7 +243,13 @@ function publicNotification(n) {
 router.post('/heartbeat', requireDeviceAuth, rateLimit, (req, res) => {
   const now = Date.now();
   touchDevice.run(now, req.device.id);
-  hub.broadcast('device_seen', { id: req.device.id, lastSeenAt: now });
+  const battery = recordBattery(req.device.id, req.body, now);
+  hub.broadcast('device_seen', {
+    id: req.device.id,
+    lastSeenAt: now,
+    battery: battery?.level ?? null,
+    charging: battery?.charging ?? null,
+  });
   res.json({ ok: true, deviceName: req.device.name, serverTime: now });
 });
 

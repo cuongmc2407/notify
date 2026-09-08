@@ -4,6 +4,7 @@ import android.app.Activity
 import android.app.ActivityManager
 import android.content.Context
 import android.content.ContextWrapper
+import android.os.Build
 import android.util.Log
 import android.view.WindowManager
 import androidx.compose.runtime.Composable
@@ -56,6 +57,22 @@ fun Activity.applySleepMode(enabled: Boolean) {
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
     } else {
         window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+    }
+
+    /* ----- hien de len tren man hinh khoa ----- */
+    // FLAG_KEEP_SCREEN_ON chi con tac dung khi activity dang hien. Neu man hinh
+    // khoa (keyguard) trum len, activity bi che -> co het tac dung -> man hinh tat
+    // -> he thong (nhat la may Xiaomi/Oppo) giet tien trinh -> mat thong bao cho
+    // toi lan quet dinh ky 15 phut sau. Cho activity hien de len keyguard thi
+    // chuoi do bi cat tu goc.
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+        setShowWhenLocked(enabled)
+        setTurnScreenOn(enabled)
+    } else {
+        @Suppress("DEPRECATION")
+        val legacyFlags = WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or
+            WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON
+        if (enabled) window.addFlags(legacyFlags) else window.clearFlags(legacyFlags)
     }
 
     /* ----- an / hien thanh he thong ----- */

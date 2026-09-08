@@ -119,6 +119,19 @@ const AVATAR_COLORS = [
   '#0891b2', '#db2777', '#65a30d', '#ea580c', '#4f46e5',
 ];
 
+/** "⚡78%" / "12%" — trả về chuỗi rỗng nếu máy chưa báo pin lần nào. */
+function batteryLabel(device) {
+  if (device.battery === null || device.battery === undefined) return '';
+  return (device.charging ? '⚡' : '') + device.battery + '%';
+}
+
+function batteryClass(device) {
+  if (device.battery === null || device.battery === undefined) return '';
+  if (device.charging) return ' bat-charging';
+  if (device.battery <= 15) return ' bat-low';
+  return '';
+}
+
 function avatarFor(pkg, name) {
   let hash = 0;
   for (let i = 0; i < pkg.length; i += 1) hash = (hash * 31 + pkg.charCodeAt(i)) >>> 0;
@@ -256,11 +269,17 @@ function renderSidebar() {
     ? state.devices
         .map((d) => {
           const sel = state.filter.device === d.id ? ' sel' : '';
+          const bat = batteryLabel(d);
+          const tip = [
+            d.model || '',
+            d.online ? 'đang hoạt động' : 'ngoại tuyến',
+            bat ? 'pin ' + bat : '',
+          ].filter(Boolean).join(' · ');
           return (
             '<button class="side-item' + sel + '" data-device="' + escapeHtml(d.id) + '">' +
             '<span class="status-dot' + (d.online ? ' online' : '') + '"></span>' +
-            '<span class="label" title="' + escapeHtml((d.model || '') + ' · ' + (d.online ? 'đang hoạt động' : 'ngoại tuyến')) + '">' +
-            escapeHtml(d.name) + '</span>' +
+            '<span class="label" title="' + escapeHtml(tip) + '">' + escapeHtml(d.name) + '</span>' +
+            (bat ? '<span class="bat' + batteryClass(d) + '">' + escapeHtml(bat) + '</span>' : '') +
             (d.unread ? '<span class="badge">' + d.unread + '</span>' : '<span class="count">' + d.total + '</span>') +
             '</button>'
           );
@@ -442,11 +461,17 @@ function handleWsEvent(msg) {
     case 'device_seen': {
       const d = state.devices.find((x) => x.id === msg.data.id);
       if (d) {
+        const wasOffline = !d.online;
+        const batteryChanged =
+          msg.data.battery !== null && msg.data.battery !== undefined && msg.data.battery !== d.battery;
+
         d.lastSeenAt = msg.data.lastSeenAt;
-        if (!d.online) {
-          d.online = true;
-          renderSidebar();
+        d.online = true;
+        if (msg.data.battery !== null && msg.data.battery !== undefined) {
+          d.battery = msg.data.battery;
+          d.charging = Boolean(msg.data.charging);
         }
+        if (wasOffline || batteryChanged) renderSidebar();
       }
       break;
     }
@@ -492,8 +517,10 @@ function renderDeviceManager() {
   list.innerHTML = state.devices
     .map((d) => {
       const seen = d.lastSeenAt ? relTime(d.lastSeenAt) : 'chưa bao giờ';
+      const bat = batteryLabel(d);
       const meta = [
         d.online ? 'đang hoạt động' : 'lần cuối ' + seen,
+        bat ? 'pin ' + bat + (d.charging ? ' (đang sạc)' : '') : 'chưa báo pin',
         d.model || 'không rõ máy',
         d.total + ' thông báo',
       ].join(' · ');

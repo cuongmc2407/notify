@@ -2,6 +2,7 @@ package com.notifybridge.net
 
 import android.content.Context
 import android.util.Log
+import com.notifybridge.data.Battery
 import com.notifybridge.data.Outbox
 import com.notifybridge.data.Prefs
 import com.notifybridge.work.UploadWorker
@@ -70,7 +71,8 @@ object Uploader {
             }
 
             try {
-                val accepted = Api.upload(prefs.serverUrl, prefs.token, events)
+                val bat = Battery.read(app)
+                val accepted = Api.upload(prefs.serverUrl, prefs.token, events, bat.percent, bat.charging)
                 outbox.delete(rows.map { it.id })
                 sentTotal += rows.size
                 prefs.lastSyncAt = System.currentTimeMillis()
@@ -100,7 +102,8 @@ object Uploader {
         heartbeatExecutor.execute {
             val prefs = Prefs(app)
             if (!prefs.isPaired) return@execute
-            runCatching { Api.heartbeat(prefs.serverUrl, prefs.token) }
+            val bat = Battery.read(app)
+            runCatching { Api.heartbeat(prefs.serverUrl, prefs.token, bat.percent, bat.charging) }
                 .onSuccess {
                     prefs.lastSyncAt = System.currentTimeMillis()
                     prefs.lastError = null

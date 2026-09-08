@@ -24,6 +24,9 @@ CREATE TABLE IF NOT EXISTS devices (
   android_version TEXT,
   token_hash      TEXT NOT NULL,
   hardware_id     TEXT,
+  battery_level   INTEGER,
+  battery_charging INTEGER,
+  battery_at      INTEGER,
   created_at      INTEGER NOT NULL,
   last_seen_at    INTEGER,
   enabled         INTEGER NOT NULL DEFAULT 1
@@ -70,8 +73,16 @@ CREATE TABLE IF NOT EXISTS settings (
 /* ---------- nang cap luoc do cho CSDL tao tu ban cu ---------- */
 
 const deviceColumns = db.prepare('PRAGMA table_info(devices)').all().map((c) => c.name);
-if (!deviceColumns.includes('hardware_id')) {
-  db.exec('ALTER TABLE devices ADD COLUMN hardware_id TEXT');
+
+for (const [column, definition] of [
+  ['hardware_id', 'TEXT'],
+  ['battery_level', 'INTEGER'],
+  ['battery_charging', 'INTEGER'],
+  ['battery_at', 'INTEGER'],
+]) {
+  if (!deviceColumns.includes(column)) {
+    db.exec(`ALTER TABLE devices ADD COLUMN ${column} ${definition}`);
+  }
 }
 
 // Khong dat UNIQUE: ALTER TABLE cua SQLite khong them duoc rang buoc,
