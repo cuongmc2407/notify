@@ -58,6 +58,8 @@ import java.util.Locale
 fun StatusScreen(
     prefs: Prefs,
     snackbar: SnackbarHostState,
+    sleepMode: Boolean,
+    onSleepModeChange: (Boolean) -> Unit,
     onUnpaired: () -> Unit,
 ) {
     val context = LocalContext.current
@@ -141,6 +143,37 @@ fun StatusScreen(
                             forwardOngoing = it
                             prefs.forwardOngoing = it
                         },
+                    )
+                }
+            }
+        }
+
+        /* ----- che do ngu ----- */
+        Card {
+            Column(Modifier.padding(14.dp)) {
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(Modifier.weight(1f)) {
+                        Text("Chế độ ngủ", style = MaterialTheme.typography.titleMedium)
+                        Text(
+                            "Màn hình luôn sáng ở độ sáng thấp nhất, không tự tắt.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Switch(checked = sleepMode, onCheckedChange = onSleepModeChange)
+                }
+
+                if (sleepMode) {
+                    Text(
+                        "Đang bật — hãy cắm sạc. Màn hình sáng liên tục rất tốn pin. " +
+                            "Chỉ có tác dụng khi app đang mở; thoát app là màn hình trở lại bình thường.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.padding(top = 8.dp),
                     )
                 }
             }

@@ -17,6 +17,8 @@ android/captures/
 *.aab
 *.keystore
 *.jks
+# Chua mat khau khoa ky - tuyet doi khong commit.
+android/keystore.properties
 
 # --- IDE ---
 .idea/

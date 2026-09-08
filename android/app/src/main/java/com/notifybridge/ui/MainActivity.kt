@@ -49,8 +49,12 @@ private fun AppRoot() {
     // Tang len de bat man hinh ve lai sau khi ghep doi / huy ghep doi.
     var revision by remember { mutableIntStateOf(0) }
     var tab by remember { mutableIntStateOf(0) }
+    var sleepMode by remember { mutableStateOf(prefs.sleepMode) }
 
     val paired = remember(revision) { prefs.isPaired }
+
+    // Dat o goc cay giao dien: doi tab van giu nguyen che do ngu.
+    SleepModeEffect(sleepMode)
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -81,6 +85,11 @@ private fun AppRoot() {
                     0 -> StatusScreen(
                         prefs = prefs,
                         snackbar = snackbar,
+                        sleepMode = sleepMode,
+                        onSleepModeChange = {
+                            sleepMode = it
+                            prefs.sleepMode = it
+                        },
                         onUnpaired = {
                             tab = 0
                             revision++

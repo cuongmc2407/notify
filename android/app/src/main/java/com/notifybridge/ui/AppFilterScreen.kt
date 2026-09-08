@@ -76,24 +76,35 @@ fun AppFilterScreen(prefs: Prefs) {
                 .padding(horizontal = 16.dp, vertical = 8.dp),
         )
 
-        Row(
-            Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 8.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
+        // Bat/tat hang loat. Khi dang tim kiem thi chi tac dong len danh sach
+        // dang hien, nen co the go "google" roi tat het cac app cua Google.
+        fun setAll(allow: Boolean) {
+            val pkgs = visible.map { it.pkg }.toSet()
+            val next = prefs.blockedPackages.toMutableSet()
+            if (allow) next.removeAll(pkgs) else next.addAll(pkgs)
+            prefs.blockedPackages = next
+            blocked.clear()
+            blocked.addAll(next)
+        }
+
+        Column(Modifier.padding(horizontal = 16.dp)) {
             Text(
-                "Bật = chuyển tiếp thông báo của app đó",
+                if (query.isBlank()) "Bật = chuyển tiếp thông báo của app đó"
+                else "Đang lọc: ${visible.size} ứng dụng — nút bên dưới chỉ áp dụng cho danh sách này",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(start = 8.dp),
             )
-            TextButton(onClick = {
-                blocked.clear()
-                prefs.blockedPackages = emptySet()
-            }) {
-                Text("Bật lại tất cả")
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                TextButton(onClick = { setAll(true) }, modifier = Modifier.weight(1f)) {
+                    Text("Bật tất cả (${visible.size})")
+                }
+                TextButton(onClick = { setAll(false) }, modifier = Modifier.weight(1f)) {
+                    Text("Tắt tất cả (${visible.size})")
+                }
             }
         }
 

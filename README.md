@@ -20,7 +20,8 @@ Server chạy trên Linux, mở ra ngoài bằng **Cloudflare Tunnel**.
 - Lịch sử, lọc theo máy / theo app, tìm kiếm toàn văn, cuộn vô hạn
 - Thông báo desktop + tiếng chuông khi có tin mới
 - Hàng đợi offline: mất mạng thì giữ lại, có mạng gửi đủ, không trùng
-- Bộ lọc bật/tắt từng ứng dụng ngay trên điện thoại
+- Bộ lọc bật/tắt từng ứng dụng, kèm nút bật/tắt hàng loạt (theo cả kết quả tìm kiếm)
+- Chế độ ngủ: màn hình luôn sáng ở mức tối nhất — để một máy cũ cắm sạc làm trạm trung chuyển
 - Mỗi máy một token riêng; web đăng nhập bằng mật khẩu
 
 ---
@@ -118,6 +119,43 @@ Hoặc chép file APK sang điện thoại rồi bấm cài (phải bật "Cài 
 Lặp lại cho từng điện thoại — mỗi máy cần một mã ghép đôi riêng (mã dùng một lần,
 hết hạn sau 10 phút).
 
+### Chế độ ngủ
+
+Dành cho trường hợp bạn để hẳn một máy cũ cắm sạc làm trạm trung chuyển. Bật công tắc
+**Chế độ ngủ** trong tab Trạng thái thì:
+
+- Màn hình **không bao giờ tự tắt** → hệ thống không ngủ, thông báo về gần như tức thì
+- Độ sáng ép xuống **mức thấp nhất** → để trong phòng tối gần như không thấy
+
+Chỉ có tác dụng khi app đang mở; thoát app là màn hình trở lại bình thường. **Nhớ cắm sạc** —
+màn hình sáng liên tục rất tốn pin.
+
+### Cảnh báo khi cài (Play Protect)
+
+Nói thẳng: **không thể đảm bảo Play Protect im lặng hoàn toàn.** App này đọc *toàn bộ*
+thông báo trên máy rồi gửi ra một server ngoài — đúng bằng hành vi mà Play Protect được
+thiết kế để phát hiện. Không có mẹo nào làm Google ngừng coi đó là hành vi đáng cảnh báo,
+trừ khi đưa app lên Play Store và qua kiểm duyệt.
+
+Từ **v1.1** app đã được ký bằng khoá release thật thay vì khoá debug mặc định của Android.
+Đây là yếu tố tác động lớn nhất: APK ký khoá debug bị Play Protect và phần mềm bảo mật của
+các hãng đánh dấu nặng hơn hẳn. Nếu vẫn còn hiện cảnh báo thì bấm:
+
+> **More details / Chi tiết** → **Install anyway / Vẫn cài**
+
+### Android 13 trở lên: "Cài đặt bị hạn chế"
+
+Đây mới là thứ hay chặn bạn nhất, và **không liên quan tới Play Protect**. Với app cài từ
+file APK (không qua cửa hàng), Android 13+ khoá luôn ô bật quyền đọc thông báo và hiện:
+
+> *"Để bảo mật, cài đặt này hiện không dùng được."*
+
+Cách mở:
+
+**Cài đặt → Ứng dụng → Notify Bridge → dấu ⋮ (góc trên phải) → Cho phép cài đặt bị hạn chế**
+
+Xong bước đó mới quay lại app bấm **Cấp quyền** được.
+
 ### Máy Xiaomi / Oppo / Vivo / Realme
 
 Các hãng này diệt tiến trình nền rất mạnh. Ngoài 2 bước trên, cần làm thêm:
@@ -136,9 +174,34 @@ Nếu không làm, hệ thống có thể ngắt kết nối service và thông 
 
 ```bash
 cd android
-./gradlew assembleDebug          # Linux/macOS
-.\gradlew.bat assembleDebug      # Windows
+./gradlew assembleRelease        # ban chinh, ky bang khoa that
+./gradlew assembleDebug          # ban de gan loi
 ```
+
+### Khoá ký release
+
+Khoá ký **không nằm trong git**. Muốn build bản release, thư mục `android/` cần 2 file:
+
+| File | Nội dung |
+|---|---|
+| `notify-release.jks` | Kho khoá (RSA 4096, hạn 10.000 ngày) |
+| `keystore.properties` | `storeFile` / `storePassword` / `keyAlias` / `keyPassword` |
+
+Nếu chưa có, tự tạo:
+
+```bash
+keytool -genkeypair -v -keystore android/notify-release.jks \
+  -alias notify -keyalg RSA -keysize 4096 -validity 10000 \
+  -dname "CN=Notify Bridge, OU=Personal, O=Notify Bridge, C=VN"
+```
+
+rồi tạo `android/keystore.properties` trỏ tới nó.
+
+> **Sao lưu cả hai file này.** Mất khoá là không cập nhật đè lên bản đã cài được nữa —
+> phải gỡ app ra cài lại từ đầu, mất hết cấu hình ghép đôi trên mọi máy.
+>
+> Thiếu 2 file này thì `assembleRelease` vẫn chạy nhưng cho ra APK **chưa ký**, không cài được.
+> Lúc đó dùng `assembleDebug`.
 
 Yêu cầu: JDK 17+, Android SDK có platform **android-36**.
 Sửa `android/local.properties` cho đúng đường dẫn SDK của bạn:
@@ -171,6 +234,7 @@ android/app/src/main/java/com/notifybridge/
   data/Prefs.kt                      cài đặt
   net/Api.kt, net/Uploader.kt        gọi server, gom lô, thử lại
   work/UploadWorker.kt               lưới an toàn 15 phút + backoff
+  ui/SleepMode.kt                    ép độ sáng tối thiểu + giữ màn hình sáng
   ui/                                Compose Material3
 ```
 
