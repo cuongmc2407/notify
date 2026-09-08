@@ -2,8 +2,10 @@ package com.notifybridge.ui
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -56,6 +58,11 @@ private fun AppRoot() {
     // Dat o goc cay giao dien: doi tab van giu nguyen che do ngu.
     SleepModeEffect(sleepMode)
 
+    // Dang khoa thi nut Quay lai khong lam gi ca.
+    BackHandler(enabled = sleepMode) { /* chan */ }
+
+    Box(Modifier.fillMaxSize()) {
+
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         topBar = { TopAppBar(title = { Text("Notify Bridge") }) },
@@ -99,6 +106,17 @@ private fun AppRoot() {
                     else -> AppFilterScreen(prefs = prefs)
                 }
             }
+        }
+    }
+
+        // Ve tren cung: nuot moi cham nen khong bam nham vao gi ben duoi.
+        if (sleepMode) {
+            SleepOverlay(
+                onUnlock = {
+                    sleepMode = false
+                    prefs.sleepMode = false
+                },
+            )
         }
     }
 }

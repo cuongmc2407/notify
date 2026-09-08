@@ -42,8 +42,13 @@ app.get('/', (req, res) => {
 app.use(
   express.static(PUBLIC_DIR, {
     index: false,
-    setHeaders(res, filePath) {
-      if (filePath.endsWith('.html')) res.setHeader('Cache-Control', 'no-store');
+    // no-cache = van luu lai nhung phai hoi lai server moi lan dung.
+    // Truoc day chi dat cho .html, nen sau khi cap nhat server trinh duyet co
+    // the chay index.html moi cung app.js cu trong cache -> giao dien vo ngay
+    // tu dong dau ("Cannot set properties of null"). Dat cho tat ca file tinh
+    // thi ETag lo phan con lai: file khong doi tra 304, doi thi tra ban moi.
+    setHeaders(res) {
+      res.setHeader('Cache-Control', 'no-cache');
     },
   })
 );

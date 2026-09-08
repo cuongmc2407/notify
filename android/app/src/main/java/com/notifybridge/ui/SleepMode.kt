@@ -1,25 +1,35 @@
 package com.notifybridge.ui
 
 import android.app.Activity
+import android.app.ActivityManager
 import android.content.Context
 import android.content.ContextWrapper
+import android.util.Log
 import android.view.WindowManager
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.platform.LocalContext
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 
 /**
- * "Che do ngu": man hinh khong bao gio tu tat, va do sang ha xuong muc thap nhat.
+ * "Che do ngu": bien may thanh mot tram trung chuyen khong the cham nham.
  *
- * Dung khi ban de mot may cu cam sac lam tram trung chuyen thong bao — man hinh
- * sang lien tuc nen he thong khong bao gio ngu, thong bao ve gan nhu tuc thi,
- * ma van gan nhu khong nhin thay anh sang trong phong toi.
+ * Khi bat:
+ *  - do sang ep xuong muc thap nhat may cho phep
+ *  - man hinh khong bao gio tu tat
+ *  - an thanh trang thai va thanh dieu huong
+ *  - ghim man hinh (lock task) de khong thoat ra app khac duoc
+ *  - mot lop phu den chan toan bo cham (xem SleepOverlay)
  *
- * Chi co tac dung khi app dang mo. Thoat app la he thong tra lai do sang cu.
+ * Chi mo khoa duoc bang cach giu tay 3 giay tren man hinh.
  */
 
-/** Do sang toi thieu. Dung 0.01 thay vi 0 de tren mot so may man hinh khong den han. */
-private const val MIN_BRIGHTNESS = 0.01f
+private const val TAG = "NotifyBridge"
+
+/** 0f = muc toi nhat ma may cho phep (van con sang, khong phai tat han). */
+private const val MIN_BRIGHTNESS = 0f
 
 fun Context.findActivity(): Activity? {
     var ctx = this
@@ -30,7 +40,13 @@ fun Context.findActivity(): Activity? {
     return null
 }
 
+private fun Activity.isInLockTask(): Boolean {
+    val am = getSystemService(Context.ACTIVITY_SERVICE) as? ActivityManager ?: return false
+    return am.lockTaskModeState != ActivityManager.LOCK_TASK_MODE_NONE
+}
+
 fun Activity.applySleepMode(enabled: Boolean) {
+    /* ----- do sang + giu man hinh sang ----- */
     val params = window.attributes
     params.screenBrightness =
         if (enabled) MIN_BRIGHTNESS else WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE
@@ -40,6 +56,30 @@ fun Activity.applySleepMode(enabled: Boolean) {
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
     } else {
         window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+    }
+
+    /* ----- an / hien thanh he thong ----- */
+    val insets = WindowCompat.getInsetsController(window, window.decorView)
+    if (enabled) {
+        insets.systemBarsBehavior =
+            WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+        insets.hide(WindowInsetsCompat.Type.systemBars())
+    } else {
+        insets.show(WindowInsetsCompat.Type.systemBars())
+    }
+
+    /* ----- ghim man hinh ----- */
+    // Khong phai may nao cung cho ghim (bi chinh sach cua to chuc chan, hoac
+    // nguoi dung tu choi hop thoai xac nhan). Ghim that bai thi lop phu den van
+    // chan cham nham - chi la co the thoat ra app khac duoc.
+    try {
+        if (enabled) {
+            if (!isInLockTask()) startLockTask()
+        } else {
+            if (isInLockTask()) stopLockTask()
+        }
+    } catch (e: Exception) {
+        Log.w(TAG, "Khong ghim/bo ghim duoc man hinh", e)
     }
 }
 
@@ -54,8 +94,8 @@ fun SleepModeEffect(enabled: Boolean) {
         val activity = context.findActivity()
         activity?.applySleepMode(enabled)
         onDispose {
-            // Roi khoi giao dien thi luon tra man hinh ve binh thuong,
-            // tranh de nguoi dung ket voi mot man hinh toi om khong tat duoc.
+            // Roi khoi giao dien thi luon go khoa: khong bao gio de nguoi dung
+            // ket lai voi mot man hinh den khong bam duoc gi.
             activity?.applySleepMode(false)
         }
     }

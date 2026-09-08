@@ -159,7 +159,8 @@ fun StatusScreen(
                     Column(Modifier.weight(1f)) {
                         Text("Chế độ ngủ", style = MaterialTheme.typography.titleMedium)
                         Text(
-                            "Màn hình luôn sáng ở độ sáng thấp nhất, không tự tắt.",
+                            "Khoá máy lại làm trạm trung chuyển: màn hình tối nhất, " +
+                                "chặn mọi chạm nhầm, không thoát ra app khác được.",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -167,15 +168,19 @@ fun StatusScreen(
                     Switch(checked = sleepMode, onCheckedChange = onSleepModeChange)
                 }
 
-                if (sleepMode) {
-                    Text(
-                        "Đang bật — hãy cắm sạc. Màn hình sáng liên tục rất tốn pin. " +
-                            "Chỉ có tác dụng khi app đang mở; thoát app là màn hình trở lại bình thường.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.padding(top = 8.dp),
-                    )
-                }
+                Text(
+                    "Mở khoá: giữ tay 3 giây lên màn hình. " +
+                        "Nếu kẹt, giữ đồng thời nút Quay lại và Tổng quan để bỏ ghim màn hình.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 10.dp),
+                )
+                Text(
+                    "Nhớ cắm sạc — màn hình sáng liên tục rất tốn pin.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.padding(top = 4.dp),
+                )
             }
         }
 

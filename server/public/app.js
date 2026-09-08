@@ -38,6 +38,17 @@ const prefs = {
 
 const $ = (id) => document.getElementById(id);
 
+/**
+ * Ghi chu vao mot phan tu, bo qua neu khong tim thay.
+ * Neu trinh duyet dang chay app.js cu voi index.html moi (hoac nguoc lai) thi
+ * mot phan tu thieu se nem loi giua chung ham ve, lam hong ca thanh ben.
+ * Bo qua yen lang van tot hon la mat toan bo giao dien.
+ */
+function setText(id, value) {
+  const el = $(id);
+  if (el) el.textContent = value;
+}
+
 /* ============ tien ich ============ */
 
 function toast(message, isError) {
@@ -239,7 +250,7 @@ function renderFeed() {
 }
 
 function renderSidebar() {
-  $('allCount').textContent = state.totals.total ? String(state.totals.total) : '';
+  setText('allCount', state.totals.total ? String(state.totals.total) : '');
 
   $('deviceList').innerHTML = state.devices.length
     ? state.devices
@@ -356,8 +367,8 @@ let wsRetry = 0;
 let wsKeepalive = null;
 
 function setConnState(on, label) {
-  $('wsDot').classList.toggle('on', on);
-  $('wsText').textContent = label;
+  $('wsDot')?.classList.toggle('on', on);
+  setText('wsText', label);
 }
 
 function matchesFilter(item) {

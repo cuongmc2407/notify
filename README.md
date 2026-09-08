@@ -21,7 +21,7 @@ Server chạy trên Linux, mở ra ngoài bằng **Cloudflare Tunnel**.
 - Thông báo desktop + tiếng chuông khi có tin mới
 - Hàng đợi offline: mất mạng thì giữ lại, có mạng gửi đủ, không trùng
 - Bộ lọc bật/tắt từng ứng dụng, kèm nút bật/tắt hàng loạt (theo cả kết quả tìm kiếm)
-- Chế độ ngủ: màn hình luôn sáng ở mức tối nhất — để một máy cũ cắm sạc làm trạm trung chuyển
+- Chế độ ngủ: khoá máy lại làm trạm trung chuyển — tối nhất, chặn chạm nhầm, không thoát ra được
 - Mỗi máy một token riêng; web đăng nhập bằng mật khẩu
 
 ---
@@ -146,13 +146,25 @@ Xoá một máy sẽ xoá luôn toàn bộ thông báo của máy đó và vô h
 ### Chế độ ngủ
 
 Dành cho trường hợp bạn để hẳn một máy cũ cắm sạc làm trạm trung chuyển. Bật công tắc
-**Chế độ ngủ** trong tab Trạng thái thì:
+**Chế độ ngủ** trong tab Trạng thái thì máy bị khoá lại:
 
+- Độ sáng ép xuống **mức thấp nhất máy cho phép**, màn hình phủ đen
 - Màn hình **không bao giờ tự tắt** → hệ thống không ngủ, thông báo về gần như tức thì
-- Độ sáng ép xuống **mức thấp nhất** → để trong phòng tối gần như không thấy
+- **Chặn toàn bộ cảm ứng** — bỏ vào túi hay để trẻ con nghịch cũng không bấm nhầm được gì
+- **Ghim màn hình**: nút Home, Quay lại, Tổng quan đều không thoát ra được
 
-Chỉ có tác dụng khi app đang mở; thoát app là màn hình trở lại bình thường. **Nhớ cắm sạc** —
-màn hình sáng liên tục rất tốn pin.
+Thông báo vẫn được nhận và gửi đi bình thường trong lúc khoá.
+
+**Mở khoá: giữ tay 3 giây lên màn hình.** Chạm nhanh không ăn thua.
+
+Lần đầu bật, Android hiện hộp thoại *"App is pinned / Đã ghim ứng dụng"* — bấm **Got it**.
+Nếu bạn bấm **No thanks** thì phần ghim không bật, lớp phủ vẫn chặn chạm nhầm nhưng nút Home
+sẽ thoát được ra ngoài.
+
+> **Lối thoát khi kẹt:** giữ đồng thời nút **Quay lại + Tổng quan** để bỏ ghim màn hình (cơ
+> chế của Android, luôn dùng được). Hoặc tắt nguồn — khởi động lại thì app không tự mở.
+
+**Nhớ cắm sạc** — màn hình sáng liên tục rất tốn pin.
 
 ### Cảnh báo khi cài (Play Protect)
 
@@ -259,7 +271,8 @@ android/app/src/main/java/com/notifybridge/
   data/DeviceId.kt                   mã băm ANDROID_ID để nhận lại máy sau khi cài lại
   net/Api.kt, net/Uploader.kt        gọi server, gom lô, thử lại
   work/UploadWorker.kt               lưới an toàn 15 phút + backoff
-  ui/SleepMode.kt                    ép độ sáng tối thiểu + giữ màn hình sáng
+  ui/SleepMode.kt                    ép độ sáng tối thiểu, giữ màn hình sáng, ghim màn hình
+  ui/SleepOverlay.kt                 lớp phủ đen nuốt mọi chạm, giữ 3 giây để mở khoá
   ui/                                Compose Material3
 ```
 
