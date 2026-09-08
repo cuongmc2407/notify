@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Đăng nhập · Notify Bridge</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%94%94%3C/text%3E%3C/svg%3E" />
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <div class="login-wrap">
+      <form class="login-card" id="form">
+        <h1>🔔 Notify Bridge</h1>
+        <p class="sub">Thông báo từ các điện thoại Android của bạn.</p>
+
+        <label class="field">
+          <span>Mật khẩu</span>
+          <input type="password" id="password" autocomplete="current-password" autofocus required />
+        </label>
+
+        <p class="error" id="error"></p>
+
+        <button class="btn btn-primary" style="width: 100%; justify-content: center" id="submit">
+          Đăng nhập
+        </button>
+      </form>
+    </div>
+
+    <script>
+      const form = document.getElementById('form');
+      const errorEl = document.getElementById('error');
+      const submitEl = document.getElementById('submit');
+
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        errorEl.textContent = '';
+        submitEl.disabled = true;
+        submitEl.textContent = 'Đang kiểm tra…';
+        try {
+          const res = await fetch('/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ password: document.getElementById('password').value }),
+          });
+          const data = await res.json().catch(() => ({}));
+          if (res.ok) {
+            location.replace('/');
+            return;
+          }
+          errorEl.textContent = data.message || 'Đăng nhập thất bại';
+        } catch (err) {
+          errorEl.textContent = 'Không kết nối được tới server';
+        }
+        submitEl.disabled = false;
+        submitEl.textContent = 'Đăng nhập';
+      });
+    </script>
+  </body>
+</html>

@@ -1,0 +1,23 @@
+﻿{
+  "name": "notify-bridge-server",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Nhan thong bao tu nhieu dien thoai Android va hien thi tren web dashboard realtime",
+  "type": "commonjs",
+  "main": "src/index.js",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "start": "node src/index.js",
+    "set-password": "node scripts/set-password.js",
+    "seed": "node scripts/seed.js"
+  },
+  "dependencies": {
+    "better-sqlite3": "^12.4.1",
+    "cookie-parser": "^1.4.7",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "ws": "^8.18.0"
+  }
+}

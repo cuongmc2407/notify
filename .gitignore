@@ -1,0 +1,29 @@
+# --- Node / server ---
+node_modules/
+server/data/
+server/.env
+server/.env.*
+!server/.env.example
+npm-debug.log*
+
+# --- Android / Gradle ---
+android/local.properties
+android/.gradle/
+android/build/
+android/app/build/
+android/.kotlin/
+android/captures/
+*.apk
+*.aab
+*.keystore
+*.jks
+
+# --- IDE ---
+.idea/
+*.iml
+.vscode/
+
+# --- He dieu hanh ---
+.DS_Store
+Thumbs.db
+*.log

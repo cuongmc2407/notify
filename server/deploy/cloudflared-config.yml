@@ -1,0 +1,36 @@
+# Mau cau hinh Cloudflare Tunnel cho Notify Bridge.
+# Chep vao /etc/cloudflared/config.yml roi sua 2 cho: <TUNNEL-UUID> va ten mien.
+#
+# Cac buoc tao tunnel (chay mot lan):
+#
+#   cloudflared tunnel login
+#   cloudflared tunnel create notify
+#       -> in ra <TUNNEL-UUID> va tao file credentials trong ~/.cloudflared/
+#   sudo mkdir -p /etc/cloudflared
+#   sudo cp ~/.cloudflared/<TUNNEL-UUID>.json /etc/cloudflared/
+#   sudo cp cloudflared-config.yml /etc/cloudflared/config.yml   # nho sua UUID + ten mien
+#   cloudflared tunnel route dns notify notify.tenmien.com
+#   sudo cloudflared service install
+#   sudo systemctl status cloudflared
+#
+# WebSocket di qua tunnel binh thuong, khong can bat gi them.
+# Neu ban bat proxy (dam may cam) tren Cloudflare thi kiem tra
+# Network -> WebSockets dang ON (mac dinh da ON).
+
+tunnel: <TUNNEL-UUID>
+credentials-file: /etc/cloudflared/<TUNNEL-UUID>.json
+
+# Giu ket noi on dinh
+protocol: quic
+no-autoupdate: true
+
+ingress:
+  - hostname: notify.tenmien.com
+    service: http://localhost:8787
+    originRequest:
+      # Khong dong ket noi WebSocket dang ranh.
+      connectTimeout: 30s
+      noHappyEyeballs: false
+
+  # Bat buoc phai co dong cuoi nay.
+  - service: http_status:404

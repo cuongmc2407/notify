@@ -1,0 +1,35 @@
+[Unit]
+Description=Notify Bridge - nhan thong bao tu dien thoai Android
+Documentation=https://github.com/
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=notify
+Group=notify
+WorkingDirectory=/opt/notify/server
+EnvironmentFile=/opt/notify/server/.env
+ExecStart=/usr/bin/node src/index.js
+Restart=always
+RestartSec=5
+
+# Ghi log ra journald: xem bang `journalctl -u notify-server -f`
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=notify-server
+
+# Han che quyen cua tien trinh cho an toan.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/notify/server/data
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+MemoryMax=512M
+
+[Install]
+WantedBy=multi-user.target

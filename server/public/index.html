@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Notify Bridge</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%94%94%3C/text%3E%3C/svg%3E" />
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <div class="app">
+      <div class="brand">
+        <span class="dot" id="wsDot" title="Trạng thái kết nối"></span>
+        <span>Notify Bridge</span>
+        <span class="conn" id="wsText">đang nối…</span>
+      </div>
+
+      <div class="topbar">
+        <button class="btn btn-icon menu-btn" id="menuBtn" title="Danh sách">☰</button>
+
+        <div class="search">
+          <span class="ico">🔍</span>
+          <input type="search" id="search" placeholder="Tìm trong thông báo…" />
+        </div>
+
+        <button class="btn btn-icon" id="unreadBtn" title="Chỉ hiện chưa đọc">🔵</button>
+        <button class="btn btn-icon" id="soundBtn" title="Âm thanh khi có thông báo mới">🔔</button>
+        <button class="btn btn-icon" id="notifyBtn" title="Thông báo trên màn hình">💬</button>
+        <button class="btn btn-icon" id="themeBtn" title="Sáng / tối">🌓</button>
+        <button class="btn" id="readAllBtn" title="Đánh dấu tất cả đã đọc">Đã đọc hết</button>
+        <button class="btn btn-primary" id="pairBtn">＋ Thêm điện thoại</button>
+        <button class="btn btn-icon" id="logoutBtn" title="Đăng xuất">🚪</button>
+      </div>
+
+      <aside class="sidebar" id="sidebar">
+        <div class="side-head">Bộ lọc</div>
+        <button class="side-item sel" data-filter="all"><span class="label">Tất cả thông báo</span><span class="count" id="allCount"></span></button>
+
+        <div class="side-head">
+          <span>Điện thoại</span>
+          <span id="deviceCount"></span>
+        </div>
+        <div id="deviceList"></div>
+
+        <div class="side-head">Ứng dụng</div>
+        <div id="appList"></div>
+      </aside>
+
+      <main class="main" id="main">
+        <div class="feed" id="feed"></div>
+        <div class="loader" id="loader" hidden>Đang tải…</div>
+        <div id="sentinel" style="height: 1px"></div>
+      </main>
+    </div>
+
+    <div class="toasts" id="toasts"></div>
+
+    <div class="modal-back" id="pairModal" hidden>
+      <div class="modal">
+        <h2>Thêm điện thoại</h2>
+        <p class="sub">Mở app <b>Notify Bridge</b> trên điện thoại và làm theo các bước:</p>
+        <ol class="steps">
+          <li>Nhập địa chỉ server bên dưới.</li>
+          <li>Nhập mã ghép đôi 6 số.</li>
+          <li>Bấm <b>Kết nối</b>, rồi cấp quyền đọc thông báo.</li>
+        </ol>
+        <div class="pair-url" id="pairUrl"></div>
+        <div class="pair-code" id="pairCode">······</div>
+        <p class="sub" id="pairExpiry" style="text-align: center; margin: 0"></p>
+        <div class="modal-actions">
+          <button class="btn" id="pairRegen">Tạo mã mới</button>
+          <button class="btn btn-primary" id="pairClose">Xong</button>
+        </div>
+      </div>
+    </div>
+
+    <script src="/app.js"></script>
+  </body>
+</html>

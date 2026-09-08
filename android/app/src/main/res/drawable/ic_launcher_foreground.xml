@@ -1,0 +1,12 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Hinh cai chuong don gian, dat giua vung an toan cua adaptive icon. -->
+    <group android:translateX="30" android:translateY="30">
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M24,42c2.8,0 5,-2.2 5,-5h-10c0,2.8 2.2,5 5,5zM39,31v-9c0,-7 -3.7,-12.7 -10,-14.3V6c0,-1.4 -1.1,-2.5 -2.5,-2.5S24,4.6 24,6v1.7C17.7,9.3 14,15 14,22v9l-4,4v2h33v-2l-4,-4z" />
+    </group>
+</vector>
