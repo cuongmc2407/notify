@@ -45,6 +45,14 @@ class Prefs(context: Context) {
         get() = sp.getBoolean(KEY_SLEEP_MODE, false)
         set(value) = sp.edit().putBoolean(KEY_SLEEP_MODE, value).apply()
 
+    /**
+     * Phien ban bo loc da dong bo tu server. Server giu ban chinh; so nay nho hon
+     * so server tra ve nghia la co nguoi vua sua tren web -> may phai cap nhat theo.
+     */
+    var filterVersion: Int
+        get() = sp.getInt(KEY_FILTER_VERSION, -1)
+        set(value) = sp.edit().putInt(KEY_FILTER_VERSION, value).apply()
+
     /** Cac package bi tat, khong chuyen tiep. */
     var blockedPackages: Set<String>
         get() = sp.getStringSet(KEY_BLOCKED, emptySet()) ?: emptySet()
@@ -78,6 +86,7 @@ class Prefs(context: Context) {
             .remove(KEY_DEVICE_ID)
             .remove(KEY_LAST_SYNC)
             .remove(KEY_LAST_ERROR)
+            .remove(KEY_FILTER_VERSION)
             .apply()
     }
 
@@ -97,6 +106,7 @@ class Prefs(context: Context) {
         private const val KEY_ENABLED = "enabled"
         private const val KEY_FORWARD_ONGOING = "forward_ongoing"
         private const val KEY_SLEEP_MODE = "sleep_mode"
+        private const val KEY_FILTER_VERSION = "filter_version"
         private const val KEY_BLOCKED = "blocked_packages"
         private const val KEY_LAST_SYNC = "last_sync_at"
         private const val KEY_LAST_ERROR = "last_error"

@@ -13,6 +13,7 @@ const {
   requireWebAuth,
 } = require('../auth');
 const hub = require('../hub');
+const filters = require('../filters');
 const { publicNotification, publicDevice } = require('./device');
 
 const router = express.Router();
@@ -169,6 +170,7 @@ router.patch('/api/devices/:id', (req, res) => {
 router.delete('/api/devices/:id', (req, res) => {
   const info = db.transaction((id) => {
     db.prepare('DELETE FROM notifications WHERE device_id = ?').run(id);
+    filters.clearDevice(id);
     return db.prepare('DELETE FROM devices WHERE id = ?').run(id);
   })(req.params.id);
 
@@ -193,6 +195,53 @@ router.post('/api/pairing-code', (req, res) => {
   const expiresAt = now + PAIRING_TTL_MS;
   db.prepare('INSERT INTO pairing_codes (code, expires_at, used_at) VALUES (?, ?, NULL)').run(code, expiresAt);
   res.json({ code, expiresAt, ttlSeconds: Math.round(PAIRING_TTL_MS / 1000) });
+});
+
+/* ---------- bo loc ung dung (sua tu web, khong can dung toi dien thoai) ---------- */
+
+router.get('/api/filter', (req, res) => {
+  const devices = db.prepare('SELECT id, name FROM devices ORDER BY created_at ASC').all();
+  res.json({
+    apps: filters.appCatalog().map((a) => ({
+      package: a.package,
+      appName: a.app_name || a.package,
+      total: a.total,
+      lastAt: a.last_at || null,
+    })),
+    devices: devices.map((d) => ({
+      id: d.id,
+      name: d.name,
+      blocked: filters.blockedFor(d.id),
+    })),
+  });
+});
+
+router.post('/api/filter', (req, res) => {
+  const pkg = String(req.body?.package || '').trim().slice(0, 200);
+  if (!pkg) {
+    return res.status(400).json({ error: 'bad_request', message: 'Thieu package' });
+  }
+
+  const blocked = Boolean(req.body?.blocked);
+  // device = null nghia la ap dung cho moi may.
+  const target = req.body?.device ? String(req.body.device) : null;
+
+  const ids = target
+    ? [target]
+    : db.prepare('SELECT id FROM devices').all().map((d) => d.id);
+
+  if (target && !db.prepare('SELECT 1 FROM devices WHERE id = ?').get(target)) {
+    return res.status(404).json({ error: 'not_found', message: 'Khong tim thay thiet bi' });
+  }
+
+  let changed = 0;
+  for (const id of ids) {
+    if (filters.setBlocked(id, pkg, blocked)) changed += 1;
+  }
+
+  if (changed) hub.broadcast('filter_changed', { package: pkg, blocked, device: target });
+
+  res.json({ ok: true, changed, package: pkg, blocked });
 });
 
 /* ---------- thong ke cho sidebar ---------- */

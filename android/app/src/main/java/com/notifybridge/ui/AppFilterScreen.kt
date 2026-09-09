@@ -20,6 +20,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -31,7 +32,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.notifybridge.data.Prefs
+import com.notifybridge.net.Uploader
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 
 private data class AppRow(val pkg: String, val label: String, val system: Boolean)
@@ -45,11 +48,21 @@ fun AppFilterScreen(prefs: Prefs) {
     val apps = remember { mutableStateListOf<AppRow>() }
     val blocked = remember { mutableStateListOf<String>().apply { addAll(prefs.blockedPackages) } }
 
+    // Tang len moi lan nguoi dung sua bo loc, de day len server sau khi ngung sua.
+    var dirty by remember { mutableIntStateOf(0) }
+
     LaunchedEffect(Unit) {
         val loaded = withContext(Dispatchers.IO) { loadApps(context.packageManager, context.packageName) }
         apps.clear()
         apps.addAll(loaded)
         loading = false
+    }
+
+    LaunchedEffect(dirty) {
+        if (dirty == 0) return@LaunchedEffect
+        // Gom nhieu lan bam lien tiep (nhat la "Tat tat ca") thanh mot lan gui.
+        delay(800)
+        Uploader.pushFilter(context)
     }
 
     if (loading) {
@@ -83,6 +96,7 @@ fun AppFilterScreen(prefs: Prefs) {
             val next = prefs.blockedPackages.toMutableSet()
             if (allow) next.removeAll(pkgs) else next.addAll(pkgs)
             prefs.blockedPackages = next
+            dirty++
             blocked.clear()
             blocked.addAll(next)
         }
@@ -139,6 +153,7 @@ fun AppFilterScreen(prefs: Prefs) {
                         onCheckedChange = { allow ->
                             if (allow) blocked.remove(app.pkg) else blocked.add(app.pkg)
                             prefs.setBlocked(app.pkg, !allow)
+                            dirty++
                         },
                     )
                 }

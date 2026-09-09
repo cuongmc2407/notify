@@ -5,6 +5,7 @@ const express = require('express');
 const { db } = require('../db');
 const { requireDeviceAuth, newDeviceToken, hashToken } = require('../auth');
 const hub = require('../hub');
+const filters = require('../filters');
 
 const router = express.Router();
 
@@ -160,10 +161,19 @@ router.post('/notifications', requireDeviceAuth, rateLimit, (req, res) => {
   const deviceId = req.device.id;
   const inserted = [];
 
+  // Chan ngay tai server: doi bo loc tren web co hieu luc tuc thi, khong phai
+  // cho dien thoai keo ve danh sach moi.
+  const blocked = new Set(filters.blockedFor(deviceId));
+  let rejected = 0;
+
   db.transaction(() => {
     for (const raw of events) {
       const pkg = str(raw?.package, 200);
       if (!pkg) continue;
+      if (blocked.has(pkg)) {
+        rejected += 1;
+        continue;
+      }
 
       const title = str(raw?.title, MAX_FIELD_LEN);
       const body = str(raw?.body, MAX_FIELD_LEN);
@@ -218,7 +228,13 @@ router.post('/notifications', requireDeviceAuth, rateLimit, (req, res) => {
     charging: battery?.charging ?? null,
   });
 
-  res.json({ accepted: inserted.length, received: events.length, serverTime: now });
+  res.json({
+    accepted: inserted.length,
+    received: events.length,
+    rejected,
+    serverTime: now,
+    filter: filters.filterPayload(deviceId),
+  });
 });
 
 function publicNotification(n) {
@@ -250,7 +266,34 @@ router.post('/heartbeat', requireDeviceAuth, rateLimit, (req, res) => {
     battery: battery?.level ?? null,
     charging: battery?.charging ?? null,
   });
-  res.json({ ok: true, deviceName: req.device.name, serverTime: now });
+  res.json({
+    ok: true,
+    deviceName: req.device.name,
+    serverTime: now,
+    filter: filters.filterPayload(req.device.id),
+  });
+});
+
+/* ---------- POST /api/device/filter: dien thoai day bo loc sua tren may len ----------
+ *
+ * Duong dan rieng "/device/..." chu khong dung chung "/api/filter" voi dashboard:
+ * router nay duoc gan vao /api TRUOC router web, nen trung duong dan la request cua
+ * trinh duyet bi requireDeviceAuth chan mat truoc khi toi duoc route dung.
+ */
+
+router.post('/device/filter', requireDeviceAuth, rateLimit, (req, res) => {
+  const packages = Array.isArray(req.body?.blocked) ? req.body.blocked : null;
+  if (!packages) {
+    return res.status(400).json({ error: 'bad_request', message: 'Thieu mang blocked' });
+  }
+  if (packages.length > 2000) {
+    return res.status(413).json({ error: 'too_many', message: 'Danh sach qua dai' });
+  }
+
+  const changed = filters.replaceBlocked(req.device.id, packages);
+  if (changed) hub.broadcast('filter_changed', { deviceId: req.device.id });
+
+  res.json({ ok: true, filter: filters.filterPayload(req.device.id) });
 });
 
 module.exports = { router, publicNotification, publicDevice };

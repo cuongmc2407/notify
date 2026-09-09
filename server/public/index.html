@@ -42,7 +42,10 @@
         </div>
         <div id="deviceList"></div>
 
-        <div class="side-head">Ứng dụng</div>
+        <div class="side-head">
+          <span>Ứng dụng</span>
+          <button class="side-manage" id="manageFilterBtn" title="Chặn hoặc cho phép từng ứng dụng">Bộ lọc</button>
+        </div>
         <div id="appList"></div>
       </aside>
 
@@ -54,6 +57,31 @@
     </div>
 
     <div class="toasts" id="toasts"></div>
+
+    <div class="modal-back" id="filterModal" hidden>
+      <div class="modal modal-tall">
+        <h2>Bộ lọc ứng dụng</h2>
+        <p class="sub">
+          Tắt một ứng dụng là server ngừng nhận thông báo của nó <b>ngay lập tức</b>. Điện thoại
+          sẽ tự đồng bộ danh sách này ở lần gửi kế tiếp để khỏi gửi cho phí.
+        </p>
+
+        <label class="field">
+          <span>Áp dụng cho</span>
+          <select id="filterDevice"></select>
+        </label>
+
+        <input type="search" id="filterSearch" class="filter-search" placeholder="Tìm ứng dụng…" />
+
+        <div id="filterList" class="filter-list"></div>
+
+        <p class="sub" id="filterNote" style="margin: 10px 0 0"></p>
+
+        <div class="modal-actions">
+          <button class="btn btn-primary" id="filterClose">Xong</button>
+        </div>
+      </div>
+    </div>
 
     <div class="modal-back" id="devicesModal" hidden>
       <div class="modal">

@@ -513,6 +513,157 @@ function handleWsEvent(msg) {
   }
 }
 
+/* ============ bo loc ung dung ============ */
+
+const filterState = { apps: [], devices: [], target: '', query: '' };
+
+/**
+ * Một app đang ở trạng thái nào với lựa chọn "Áp dụng cho" hiện tại:
+ * 'on'      = đang cho phép
+ * 'off'     = đang chặn
+ * 'partial' = chỉ chặn ở một số máy (chỉ xảy ra khi chọn "Tất cả máy")
+ */
+function filterStateOf(pkg) {
+  const devices = filterState.target
+    ? filterState.devices.filter((d) => d.id === filterState.target)
+    : filterState.devices;
+  if (!devices.length) return 'on';
+
+  const blockedCount = devices.filter((d) => d.blocked.includes(pkg)).length;
+  if (blockedCount === 0) return 'on';
+  if (blockedCount === devices.length) return 'off';
+  return 'partial';
+}
+
+function renderFilter() {
+  const sel = $('filterDevice');
+  if (sel.options.length !== filterState.devices.length + 1) {
+    sel.innerHTML =
+      '<option value="">Tất cả máy (' + filterState.devices.length + ')</option>' +
+      filterState.devices
+        .map((d) => '<option value="' + escapeHtml(d.id) + '">' + escapeHtml(d.name) + '</option>')
+        .join('');
+    sel.value = filterState.target;
+  }
+
+  const q = filterState.query.trim().toLowerCase();
+  const visible = filterState.apps.filter(
+    (a) => !q || a.appName.toLowerCase().includes(q) || a.package.toLowerCase().includes(q)
+  );
+
+  const list = $('filterList');
+  if (!visible.length) {
+    list.innerHTML =
+      '<div class="dev-empty">' +
+      (filterState.apps.length
+        ? 'Không có ứng dụng nào khớp.'
+        : 'Chưa nhận thông báo từ ứng dụng nào, nên chưa có gì để lọc.') +
+      '</div>';
+  } else {
+    list.innerHTML = visible
+      .map((a) => {
+        const st = filterStateOf(a.package);
+        const sub = a.total > 0 ? a.package + ' · ' + a.total + ' thông báo' : a.package;
+        return (
+          '<div class="flt-row' + (st === 'off' ? ' off' : '') + '">' +
+          '<div class="flt-main">' +
+          '<div class="flt-name">' + escapeHtml(a.appName) + '</div>' +
+          '<div class="flt-sub">' + escapeHtml(sub) + '</div>' +
+          '</div>' +
+          '<button class="flt-toggle ' + (st === 'on' ? 'on' : st === 'partial' ? 'partial' : '') + '"' +
+          ' data-pkg="' + escapeHtml(a.package) + '" data-state="' + st + '"' +
+          ' title="' + (st === 'partial' ? 'Chỉ chặn ở một số máy' : st === 'on' ? 'Đang cho phép' : 'Đang chặn') + '"' +
+          '></button>' +
+          '</div>'
+        );
+      })
+      .join('');
+  }
+
+  const totalBlocked = new Set();
+  for (const d of filterState.devices) for (const p of d.blocked) totalBlocked.add(p);
+  $('filterNote').textContent = totalBlocked.size
+    ? 'Đang chặn ' + totalBlocked.size + ' ứng dụng. Chỉ hiện những app đã từng gửi thông báo về.'
+    : 'Chỉ hiện những app đã từng gửi thông báo về đây.';
+}
+
+async function loadFilter() {
+  const data = await api('/api/filter');
+  filterState.apps = data.apps;
+  filterState.devices = data.devices;
+  if (filterState.target && !data.devices.some((d) => d.id === filterState.target)) {
+    filterState.target = '';
+  }
+  $('filterDevice').innerHTML = '';
+  renderFilter();
+}
+
+async function openFilterModal() {
+  $('filterModal').hidden = false;
+  $('filterList').innerHTML = '<div class="dev-empty">Đang tải…</div>';
+  try {
+    await loadFilter();
+  } catch (err) {
+    toast(err.message, true);
+  }
+}
+
+function bindFilter() {
+  $('manageFilterBtn').addEventListener('click', openFilterModal);
+  $('filterClose').addEventListener('click', () => {
+    $('filterModal').hidden = true;
+  });
+  $('filterModal').addEventListener('click', (e) => {
+    if (e.target === $('filterModal')) $('filterModal').hidden = true;
+  });
+
+  $('filterDevice').addEventListener('change', (e) => {
+    filterState.target = e.target.value;
+    renderFilter();
+  });
+
+  let searchTimer = null;
+  $('filterSearch').addEventListener('input', (e) => {
+    clearTimeout(searchTimer);
+    const value = e.target.value;
+    searchTimer = setTimeout(() => {
+      filterState.query = value;
+      renderFilter();
+    }, 200);
+  });
+
+  $('filterList').addEventListener('click', async (e) => {
+    const btn = e.target.closest('[data-pkg]');
+    if (!btn || btn.disabled) return;
+
+    const pkg = btn.dataset.pkg;
+    // "Một phần" bấm vào thì chặn hết cho dứt khoát.
+    const blocked = btn.dataset.state !== 'off';
+
+    btn.disabled = true;
+    try {
+      await api('/api/filter', {
+        method: 'POST',
+        body: JSON.stringify({ package: pkg, blocked, device: filterState.target || null }),
+      });
+
+      // Cập nhật tại chỗ để phản hồi ngay, không chờ tải lại.
+      const targets = filterState.target
+        ? filterState.devices.filter((d) => d.id === filterState.target)
+        : filterState.devices;
+      for (const d of targets) {
+        const has = d.blocked.includes(pkg);
+        if (blocked && !has) d.blocked.push(pkg);
+        if (!blocked && has) d.blocked = d.blocked.filter((p) => p !== pkg);
+      }
+      renderFilter();
+    } catch (err) {
+      toast(err.message, true);
+      btn.disabled = false;
+    }
+  });
+}
+
 /* ============ quan ly dien thoai ============ */
 
 function renderDeviceManager() {
@@ -864,6 +1015,9 @@ function bind() {
     }
   });
 
+  // Bo loc ung dung
+  bindFilter();
+
   // Quan ly dien thoai
   bindDeviceManager();
 
@@ -885,6 +1039,7 @@ function bind() {
     if (e.key === 'Escape') {
       closePairModal();
       closeDevicesModal();
+      $('filterModal').hidden = true;
     }
     if (e.key === '/' && document.activeElement !== $('search')) {
       e.preventDefault();

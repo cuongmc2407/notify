@@ -72,12 +72,13 @@ object Uploader {
 
             try {
                 val bat = Battery.read(app)
-                val accepted = Api.upload(prefs.serverUrl, prefs.token, events, bat.percent, bat.charging)
+                val result = Api.upload(prefs.serverUrl, prefs.token, events, bat.percent, bat.charging)
                 outbox.delete(rows.map { it.id })
                 sentTotal += rows.size
                 prefs.lastSyncAt = System.currentTimeMillis()
                 prefs.lastError = null
-                Log.d(TAG, "Da gui ${rows.size} thong bao, server ghi nhan $accepted")
+                applyFilter(prefs, result.filter)
+                Log.d(TAG, "Da gui ${rows.size} thong bao, server ghi nhan ${result.accepted}")
             } catch (e: Api.ApiException) {
                 // 401/403: token khong con dung -> giu lai hang doi, bao loi cho nguoi dung.
                 prefs.lastError = e.message
@@ -115,12 +116,46 @@ object Uploader {
 
         val bat = Battery.read(app)
         return runCatching { Api.heartbeat(prefs.serverUrl, prefs.token, bat.percent, bat.charging) }
-            .onSuccess {
+            .onSuccess { filter ->
                 prefs.lastSyncAt = System.currentTimeMillis()
                 prefs.lastError = null
+                applyFilter(prefs, filter)
             }
             .onFailure { prefs.lastError = it.message }
             .isSuccess
+    }
+
+    /**
+     * Nhan bo loc server tra kem trong moi phan hoi. Server la ban chinh, nen chi
+     * cap nhat khi version cua no moi hon - tranh ghi de len thay doi may vua sua
+     * ma chua kip day len.
+     */
+    private fun applyFilter(prefs: Prefs, filter: Api.Filter?) {
+        if (filter == null) return
+        if (filter.version <= prefs.filterVersion) return
+
+        prefs.blockedPackages = filter.blocked
+        prefs.filterVersion = filter.version
+        Log.d(TAG, "Cap nhat bo loc tu server: v${filter.version}, chan ${filter.blocked.size} app")
+    }
+
+    /** Nguoi dung vua sua bo loc tren may -> day len server (server giu ban chinh). */
+    fun pushFilter(context: Context) {
+        val app = context.applicationContext
+        heartbeatExecutor.execute {
+            val prefs = Prefs(app)
+            if (!prefs.isPaired) return@execute
+            runCatching { Api.pushFilter(prefs.serverUrl, prefs.token, prefs.blockedPackages) }
+                .onSuccess { filter ->
+                    // Version moi tu chinh lan day nay, ghi lai de khong tu dong bo nguoc.
+                    if (filter != null) prefs.filterVersion = filter.version
+                    prefs.lastError = null
+                }
+                .onFailure {
+                    Log.w(TAG, "Khong day duoc bo loc len server", it)
+                    prefs.lastError = it.message
+                }
+        }
     }
 
     private fun scheduleRetry(context: Context) {

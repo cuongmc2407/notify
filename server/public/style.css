@@ -351,6 +351,100 @@ select {
   text-align: center;
 }
 
+/* ---------- bo loc ung dung ---------- */
+.modal-tall {
+  max-width: 520px;
+}
+.filter-search {
+  width: 100%;
+  padding: 8px 11px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  margin-bottom: 10px;
+}
+.filter-search:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+}
+.filter-list {
+  max-height: 46vh;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.flt-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 11px;
+  border-bottom: 1px solid var(--border);
+}
+.flt-row:last-child {
+  border-bottom: 0;
+}
+.flt-main {
+  flex: 1;
+  min-width: 0;
+}
+.flt-name {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.flt-sub {
+  font-size: 11.5px;
+  color: var(--text-faint);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.flt-row.off .flt-name,
+.flt-row.off .flt-sub {
+  color: var(--text-faint);
+  text-decoration: line-through;
+}
+/* Cong tac dang kieu iOS, khong dung <input type=checkbox> mac dinh cho de nhin. */
+.flt-toggle {
+  flex: none;
+  width: 42px;
+  height: 24px;
+  border-radius: 999px;
+  border: 0;
+  background: var(--border-strong);
+  position: relative;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.flt-toggle::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform 0.15s;
+}
+.flt-toggle.on {
+  background: var(--accent);
+}
+.flt-toggle.on::after {
+  transform: translateX(18px);
+}
+.flt-toggle.partial {
+  background: var(--amber);
+}
+.flt-toggle.partial::after {
+  transform: translateX(9px);
+}
+.flt-toggle:disabled {
+  opacity: 0.5;
+  cursor: progress;
+}
+
 .side-item {
   display: flex;
   align-items: center;

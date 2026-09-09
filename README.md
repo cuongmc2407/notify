@@ -20,7 +20,7 @@ Server chạy trên Linux, mở ra ngoài bằng **Cloudflare Tunnel**.
 - Lịch sử, lọc theo máy / theo app, tìm kiếm toàn văn, cuộn vô hạn
 - Thông báo desktop + tiếng chuông khi có tin mới
 - Hàng đợi offline: mất mạng thì giữ lại, có mạng gửi đủ, không trùng
-- Bộ lọc bật/tắt từng ứng dụng, kèm nút bật/tắt hàng loạt (theo cả kết quả tìm kiếm)
+- Bộ lọc ứng dụng sửa được **ngay trên web**, hiệu lực tức thì, không cần đụng tới điện thoại
 - Chế độ ngủ: khoá máy lại làm trạm trung chuyển — tối nhất, hiện % pin, chặn chạm nhầm, không rơi vào màn hình khoá
 - Dashboard hiện mức pin từng điện thoại, tự cập nhật ngay khi pin đổi, đỏ khi sắp hết
 - Mỗi máy một token riêng; web đăng nhập bằng mật khẩu
@@ -134,6 +134,26 @@ thật, chỉ thấy bản đã băm.
 > **Máy ghép đôi từ trước v1.2** không có mã này. Lần đầu nâng lên v1.2 và ghép đôi lại,
 > chúng vẫn sinh ra một dòng mới — xoá dòng cũ **một lần** bằng nút **Quản lý** (mục dưới).
 > Từ đó về sau không phải làm gì nữa.
+
+### Bộ lọc ứng dụng — sửa ngay trên web
+
+Bấm **Bộ lọc** ở cạnh mục ỨNG DỤNG trong thanh bên. Tắt một ứng dụng là **server ngừng nhận
+thông báo của nó ngay lập tức**, không phải đụng tới điện thoại, không phải cài lại APK.
+
+Có hai tầng chặn:
+
+1. **Server chặn khi nhận** — hiệu lực tức thì, kể cả khi điện thoại đang tắt mạng.
+2. **Điện thoại tự đồng bộ danh sách** ở lần gửi/heartbeat kế tiếp rồi chặn từ gốc, cho đỡ
+   tốn pin và băng thông. Chậm hơn một chút nhưng không ảnh hưởng kết quả.
+
+Ô **Áp dụng cho** chọn một máy hoặc *Tất cả máy*. Công tắc màu vàng nghĩa là app đó chỉ bị
+chặn ở một số máy — bấm vào sẽ chặn hết cho dứt khoát.
+
+Sửa trên màn hình **Bộ lọc app** của điện thoại cũng được, thay đổi tự đẩy lên server. Server
+giữ bản chính, nên hai bên không đá nhau.
+
+> Danh sách chỉ hiện những app **đã từng gửi thông báo về đây** — không lấy được danh sách app
+> đã cài trên máy từ xa. App nào chưa từng gửi gì thì chặn trên màn hình của điện thoại.
 
 ### Mức pin trên dashboard
 
@@ -282,6 +302,7 @@ server/
   src/hub.js            WebSocket hub, ping/pong 30s
   src/routes/device.js  API cho điện thoại  (Bearer token)
   src/routes/web.js     API cho dashboard   (session cookie)
+  src/filters.js        bộ lọc ứng dụng theo từng máy, server giữ bản chính
   public/               dashboard vanilla JS, không có bước build
   scripts/set-password.js, scripts/seed.js
   deploy/               systemd, cloudflared, install-linux.sh

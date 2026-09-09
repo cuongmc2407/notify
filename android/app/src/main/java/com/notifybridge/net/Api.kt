@@ -50,25 +50,54 @@ object Api {
         )
     }
 
-    /** Gui mot lo thong bao. Tra ve so ban ghi server ghi nhan moi. */
+    /**
+     * Bo loc ung dung do server giu. Server la ban chinh: sua tren web hay tren may
+     * deu ve day, [version] tang moi lan doi de may biet khi nao can cap nhat.
+     */
+    data class Filter(val version: Int, val blocked: Set<String>)
+
+    data class UploadResult(val accepted: Int, val filter: Filter?)
+
+    /** Gui mot lo thong bao. Tra ve so ban ghi server ghi nhan moi + bo loc hien hanh. */
     fun upload(
         baseUrl: String,
         token: String,
         events: JSONArray,
         battery: Int = -1,
         charging: Boolean = false,
-    ): Int {
+    ): UploadResult {
         val body = JSONObject().put("events", events)
         putBattery(body, battery, charging)
         val json = post("$baseUrl/api/notifications", token, body.toString())
-        return json.optInt("accepted", 0)
+        return UploadResult(json.optInt("accepted", 0), parseFilter(json))
     }
 
-    /** Bao cho server biet may van dang song, kem muc pin. */
-    fun heartbeat(baseUrl: String, token: String, battery: Int = -1, charging: Boolean = false) {
+    /** Bao cho server biet may van dang song, kem muc pin. Tra ve bo loc hien hanh. */
+    fun heartbeat(
+        baseUrl: String,
+        token: String,
+        battery: Int = -1,
+        charging: Boolean = false,
+    ): Filter? {
         val body = JSONObject()
         putBattery(body, battery, charging)
-        post("$baseUrl/api/heartbeat", token, body.toString())
+        return parseFilter(post("$baseUrl/api/heartbeat", token, body.toString()))
+    }
+
+    /** Day bo loc nguoi dung vua sua tren may len server. */
+    fun pushFilter(baseUrl: String, token: String, blocked: Set<String>): Filter? {
+        val body = JSONObject().put("blocked", JSONArray(blocked.toList()))
+        return parseFilter(post("$baseUrl/api/device/filter", token, body.toString()))
+    }
+
+    private fun parseFilter(json: JSONObject): Filter? {
+        val obj = json.optJSONObject("filter") ?: return null
+        val arr = obj.optJSONArray("blocked") ?: JSONArray()
+        val blocked = HashSet<String>(arr.length())
+        for (i in 0 until arr.length()) {
+            arr.optString(i).takeIf { it.isNotBlank() }?.let(blocked::add)
+        }
+        return Filter(obj.optInt("version", 0), blocked)
     }
 
     /** Chi gui khi doc duoc pin, de server phan biet "chua biet" voi "0%". */
