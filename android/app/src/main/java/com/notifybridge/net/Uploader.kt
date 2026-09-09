@@ -96,20 +96,31 @@ object Uploader {
         return true
     }
 
-    /** Bao cho server biet may van song (chay nen, khong chan luong goi). */
+    /** Bao cho server biet may van song + muc pin. Chay nen, khong chan luong goi. */
     fun sendHeartbeat(context: Context) {
         val app = context.applicationContext
-        heartbeatExecutor.execute {
-            val prefs = Prefs(app)
-            if (!prefs.isPaired) return@execute
-            val bat = Battery.read(app)
-            runCatching { Api.heartbeat(prefs.serverUrl, prefs.token, bat.percent, bat.charging) }
-                .onSuccess {
-                    prefs.lastSyncAt = System.currentTimeMillis()
-                    prefs.lastError = null
-                }
-                .onFailure { prefs.lastError = it.message }
-        }
+        heartbeatExecutor.execute { heartbeatNow(app) }
+    }
+
+    /**
+     * Nhu [sendHeartbeat] nhung chan cho toi khi gui xong.
+     *
+     * Dung trong Worker: neu gui nen roi tra Result ngay thi WorkManager coi nhu
+     * xong viec va he thong co the giet tien trinh truoc khi request kip di.
+     */
+    fun heartbeatNow(context: Context): Boolean {
+        val app = context.applicationContext
+        val prefs = Prefs(app)
+        if (!prefs.isPaired) return false
+
+        val bat = Battery.read(app)
+        return runCatching { Api.heartbeat(prefs.serverUrl, prefs.token, bat.percent, bat.charging) }
+            .onSuccess {
+                prefs.lastSyncAt = System.currentTimeMillis()
+                prefs.lastError = null
+            }
+            .onFailure { prefs.lastError = it.message }
+            .isSuccess
     }
 
     private fun scheduleRetry(context: Context) {

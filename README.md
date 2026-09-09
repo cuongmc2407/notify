@@ -22,7 +22,7 @@ Server chạy trên Linux, mở ra ngoài bằng **Cloudflare Tunnel**.
 - Hàng đợi offline: mất mạng thì giữ lại, có mạng gửi đủ, không trùng
 - Bộ lọc bật/tắt từng ứng dụng, kèm nút bật/tắt hàng loạt (theo cả kết quả tìm kiếm)
 - Chế độ ngủ: khoá máy lại làm trạm trung chuyển — tối nhất, hiện % pin, chặn chạm nhầm, không rơi vào màn hình khoá
-- Dashboard hiện mức pin từng điện thoại, đỏ khi sắp hết
+- Dashboard hiện mức pin từng điện thoại, tự cập nhật ngay khi pin đổi, đỏ khi sắp hết
 - Mỗi máy một token riêng; web đăng nhập bằng mật khẩu
 
 ---
@@ -134,6 +134,18 @@ thật, chỉ thấy bản đã băm.
 > **Máy ghép đôi từ trước v1.2** không có mã này. Lần đầu nâng lên v1.2 và ghép đôi lại,
 > chúng vẫn sinh ra một dòng mới — xoá dòng cũ **một lần** bằng nút **Quản lý** (mục dưới).
 > Từ đó về sau không phải làm gì nữa.
+
+### Mức pin trên dashboard
+
+Điện thoại tự báo mức pin **ngay khi nó thay đổi** (bắt `ACTION_BATTERY_CHANGED`), không
+phải chờ có thông báo mới hay chờ tới lượt WorkManager. Một chu kỳ xả hết pin chỉ tốn
+khoảng 100 request.
+
+Có cửa sổ chống dội **30 giây**: nhiều thay đổi liên tiếp gộp thành một lần gửi mang giá trị
+mới nhất — hoãn lại chứ không bỏ, nên con số không bao giờ đứng im ở giá trị cũ.
+
+Số đo cũ hơn **45 phút** bị làm mờ trên thanh bên, để không nhầm với mức pin hiện tại. Rê
+chuột vào tên máy để xem đo từ lúc nào.
 
 ### Quản lý điện thoại trên dashboard
 
@@ -280,6 +292,7 @@ android/app/src/main/java/com/notifybridge/
   data/Prefs.kt                      cài đặt
   data/DeviceId.kt                   mã băm ANDROID_ID để nhận lại máy sau khi cài lại
   data/Battery.kt                    đọc % pin (ưu tiên giá trị thanh trạng thái hiển thị)
+  data/BatteryWatcher.kt             báo pin lên server ngay khi đổi, chống dội 30s
   net/Api.kt, net/Uploader.kt        gọi server, gom lô, thử lại
   work/UploadWorker.kt               lưới an toàn 15 phút + backoff
   ui/SleepMode.kt                    ép độ sáng tối thiểu, giữ màn hình sáng, ghim màn hình

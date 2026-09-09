@@ -125,8 +125,16 @@ function batteryLabel(device) {
   return (device.charging ? '⚡' : '') + device.battery + '%';
 }
 
+/** Số đo cũ hơn ngần này thì coi là không còn đáng tin. */
+const BATTERY_STALE_MS = 45 * 60000;
+
+function batteryStale(device) {
+  return Boolean(device.batteryAt) && Date.now() - device.batteryAt > BATTERY_STALE_MS;
+}
+
 function batteryClass(device) {
   if (device.battery === null || device.battery === undefined) return '';
+  if (batteryStale(device)) return ' bat-stale';
   if (device.charging) return ' bat-charging';
   if (device.battery <= 15) return ' bat-low';
   return '';
@@ -273,7 +281,7 @@ function renderSidebar() {
           const tip = [
             d.model || '',
             d.online ? 'đang hoạt động' : 'ngoại tuyến',
-            bat ? 'pin ' + bat : '',
+            bat ? 'pin ' + bat + (d.batteryAt ? ' — đo ' + relTime(d.batteryAt) : '') : '',
           ].filter(Boolean).join(' · ');
           return (
             '<button class="side-item' + sel + '" data-device="' + escapeHtml(d.id) + '">' +
@@ -470,6 +478,7 @@ function handleWsEvent(msg) {
         if (msg.data.battery !== null && msg.data.battery !== undefined) {
           d.battery = msg.data.battery;
           d.charging = Boolean(msg.data.charging);
+          d.batteryAt = msg.data.lastSeenAt;
         }
         if (wasOffline || batteryChanged) renderSidebar();
       }
@@ -518,9 +527,14 @@ function renderDeviceManager() {
     .map((d) => {
       const seen = d.lastSeenAt ? relTime(d.lastSeenAt) : 'chưa bao giờ';
       const bat = batteryLabel(d);
+      const batText = bat
+        ? 'pin ' + bat +
+          (d.charging ? ' (đang sạc)' : '') +
+          (d.batteryAt ? ' — đo ' + relTime(d.batteryAt) : '')
+        : 'chưa báo pin';
       const meta = [
         d.online ? 'đang hoạt động' : 'lần cuối ' + seen,
-        bat ? 'pin ' + bat + (d.charging ? ' (đang sạc)' : '') : 'chưa báo pin',
+        batText,
         d.model || 'không rõ máy',
         d.total + ' thông báo',
       ].join(' · ');

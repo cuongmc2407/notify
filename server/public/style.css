@@ -409,6 +409,10 @@ select {
   color: var(--red);
   font-weight: 700;
 }
+/* So do cu -> lam mo di de khong tuong la muc pin hien tai. */
+.bat.bat-stale {
+  opacity: 0.4;
+}
 .side-item.sel .bat {
   color: var(--accent);
 }

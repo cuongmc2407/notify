@@ -21,7 +21,9 @@ import java.util.concurrent.TimeUnit
 class UploadWorker(context: Context, params: WorkerParameters) : Worker(context, params) {
 
     override fun doWork(): Result {
-        Uploader.sendHeartbeat(applicationContext)
+        // Chan cho gui xong: Worker tra Result la WorkManager coi nhu het viec,
+        // he thong co the giet tien trinh truoc khi request kip di.
+        Uploader.heartbeatNow(applicationContext)
         return if (Uploader.drain(applicationContext)) Result.success() else Result.retry()
     }
 
