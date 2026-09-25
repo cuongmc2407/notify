@@ -507,6 +507,11 @@ select {
 .bat.bat-stale {
   opacity: 0.4;
 }
+.deaf {
+  font-size: 12px;
+  color: var(--red);
+  cursor: help;
+}
 .side-item.sel .bat {
   color: var(--accent);
 }

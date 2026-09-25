@@ -65,9 +65,11 @@ object Api {
         events: JSONArray,
         battery: Int = -1,
         charging: Boolean = false,
+        listening: Boolean? = null,
     ): UploadResult {
         val body = JSONObject().put("events", events)
         putBattery(body, battery, charging)
+        putListening(body, listening)
         val json = post("$baseUrl/api/notifications", token, body.toString())
         return UploadResult(json.optInt("accepted", 0), parseFilter(json))
     }
@@ -78,9 +80,11 @@ object Api {
         token: String,
         battery: Int = -1,
         charging: Boolean = false,
+        listening: Boolean? = null,
     ): Filter? {
         val body = JSONObject()
         putBattery(body, battery, charging)
+        putListening(body, listening)
         return parseFilter(post("$baseUrl/api/heartbeat", token, body.toString()))
     }
 
@@ -106,6 +110,14 @@ object Api {
             body.put("battery", battery)
             body.put("charging", charging)
         }
+    }
+
+    /**
+     * Listener co dang nghe thong bao khong. Server dung no de canh bao tren
+     * dashboard khi may van song (heartbeat deu) ma khong con doc duoc thong bao.
+     */
+    private fun putListening(body: JSONObject, listening: Boolean?) {
+        if (listening != null) body.put("listening", listening)
     }
 
     private fun post(url: String, token: String?, body: String): JSONObject {

@@ -5,6 +5,7 @@ import android.util.Log
 import com.notifybridge.data.Battery
 import com.notifybridge.data.Outbox
 import com.notifybridge.data.Prefs
+import com.notifybridge.service.NotifyListenerService
 import com.notifybridge.work.UploadWorker
 import org.json.JSONArray
 import org.json.JSONObject
@@ -72,7 +73,10 @@ object Uploader {
 
             try {
                 val bat = Battery.read(app)
-                val result = Api.upload(prefs.serverUrl, prefs.token, events, bat.percent, bat.charging)
+                val result = Api.upload(
+                    prefs.serverUrl, prefs.token, events, bat.percent, bat.charging,
+                    NotifyListenerService.connected,
+                )
                 outbox.delete(rows.map { it.id })
                 sentTotal += rows.size
                 prefs.lastSyncAt = System.currentTimeMillis()
@@ -115,7 +119,8 @@ object Uploader {
         if (!prefs.isPaired) return false
 
         val bat = Battery.read(app)
-        return runCatching { Api.heartbeat(prefs.serverUrl, prefs.token, bat.percent, bat.charging) }
+        val listening = NotifyListenerService.connected
+        return runCatching { Api.heartbeat(prefs.serverUrl, prefs.token, bat.percent, bat.charging, listening) }
             .onSuccess { filter ->
                 prefs.lastSyncAt = System.currentTimeMillis()
                 prefs.lastError = null

@@ -1,5 +1,6 @@
 package com.notifybridge.ui
 
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -47,6 +48,7 @@ import com.notifybridge.net.Uploader
 import com.notifybridge.service.NotifyListenerService
 import com.notifybridge.work.UploadWorker
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
@@ -72,6 +74,7 @@ fun StatusScreen(
     var pendingCount by remember { mutableLongStateOf(0L) }
 
     val listenerOn = remember(refresh) { NotifyListenerService.isEnabled(context) }
+    var listenerConnected by remember { mutableStateOf(NotifyListenerService.connected) }
     val batteryFree = remember(refresh) { isIgnoringBatteryOptimizations(context) }
     val lastSyncAt = remember(refresh) { prefs.lastSyncAt }
     val lastError = remember(refresh) { prefs.lastError }
@@ -88,6 +91,16 @@ fun StatusScreen(
 
     LaunchedEffect(refresh) {
         pendingCount = withContext(Dispatchers.IO) { Outbox.get(context).count() }
+    }
+
+    // Listener ket noi/ngat bat dong bo (he thong bind lai sau vai giay),
+    // nen hoi lai dinh ky thay vi chi luc quay lai man hinh.
+    LaunchedEffect(Unit) {
+        NotifyListenerService.ensureConnected(context)
+        while (true) {
+            listenerConnected = NotifyListenerService.connected
+            delay(2_000)
+        }
     }
 
     Column(
@@ -185,14 +198,40 @@ fun StatusScreen(
         }
 
         /* ----- quyen can cap ----- */
-        PermissionCard(
-            title = "Quyền đọc thông báo",
-            ok = listenerOn,
-            okText = "Đã cấp",
-            missingText = "Bắt buộc — không có quyền này app không đọc được thông báo nào.",
-            actionLabel = if (listenerOn) "Mở cài đặt" else "Cấp quyền",
-            onAction = { context.startActivity(notificationAccessIntent()) },
-        )
+        if (listenerOn && !listenerConnected) {
+            // Quyen van con nhung he thong khong bind listener (hay gap tren Xiaomi
+            // sau khi khoi dong lai may): thong bao hien tren may ma khong ve web.
+            PermissionCard(
+                title = "Chưa nghe được thông báo",
+                ok = false,
+                okText = "",
+                missingText = "Đã cấp quyền nhưng hệ thống chưa chạy dịch vụ đọc thông báo — " +
+                    "thông báo sẽ không lên web. App đang tự kết nối lại; nếu vẫn thấy dòng này, " +
+                    "tắt rồi bật lại quyền đọc thông báo.",
+                actionLabel = "Mở cài đặt",
+                onAction = { context.startActivity(notificationAccessIntent()) },
+            )
+        } else {
+            PermissionCard(
+                title = "Quyền đọc thông báo",
+                ok = listenerOn,
+                okText = "Đã cấp, đang nghe thông báo",
+                missingText = "Bắt buộc — không có quyền này app không đọc được thông báo nào.",
+                actionLabel = if (listenerOn) "Mở cài đặt" else "Cấp quyền",
+                onAction = { context.startActivity(notificationAccessIntent()) },
+            )
+        }
+
+        if (isXiaomi()) {
+            HintCard(
+                title = "Tự khởi động (Xiaomi)",
+                text = "Bắt buộc trên Xiaomi/Redmi/POCO — thiếu quyền này, sau khi tắt nguồn " +
+                    "bật lại máy sẽ không chạy dịch vụ đọc thông báo. Bật \"Tự khởi động\" cho " +
+                    "app, và trong Tiết kiệm pin chọn \"Không giới hạn\".",
+                actionLabel = "Mở Tự khởi động",
+                onAction = { openXiaomiAutostart(context) },
+            )
+        }
 
         PermissionCard(
             title = "Bỏ tối ưu pin",
@@ -311,6 +350,23 @@ private fun PermissionCard(
     }
 }
 
+/** Nhu [PermissionCard] nhung cho thu app khong tu kiem tra duoc trang thai. */
+@Composable
+private fun HintCard(
+    title: String,
+    text: String,
+    actionLabel: String,
+    onAction: () -> Unit,
+) {
+    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
+        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text("•  $title", style = MaterialTheme.typography.titleMedium)
+            Text(text, style = MaterialTheme.typography.bodyMedium)
+            OutlinedButton(onClick = onAction) { Text(actionLabel) }
+        }
+    }
+}
+
 @Composable
 private fun InfoRow(label: String, value: String) {
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
@@ -334,6 +390,34 @@ private fun formatTime(ms: Long): String =
 private fun notificationAccessIntent(): Intent =
     Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)
         .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+
+private fun isXiaomi(): Boolean =
+    Build.MANUFACTURER.lowercase(Locale.ROOT) in setOf("xiaomi", "redmi", "poco")
+
+/**
+ * MIUI/HyperOS khong co API doc trang thai "Tu khoi dong", chi mo duoc man hinh
+ * cai dat. Man hinh do doi ten qua cac ban nen thu lan luot, cuoi cung la trang
+ * thong tin app (co muc "Tu khoi dong" o do).
+ */
+private fun openXiaomiAutostart(context: Context) {
+    val candidates = listOf(
+        Intent().setComponent(
+            ComponentName(
+                "com.miui.securitycenter",
+                "com.miui.permcenter.autostart.AutoStartManagementActivity",
+            )
+        ),
+        Intent("miui.intent.action.OP_AUTO_START"),
+        Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+            .setData(Uri.parse("package:${context.packageName}")),
+    )
+    for (intent in candidates) {
+        val ok = runCatching {
+            context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        }.isSuccess
+        if (ok) return
+    }
+}
 
 private fun isIgnoringBatteryOptimizations(context: Context): Boolean {
     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return true

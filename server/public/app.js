@@ -140,6 +140,14 @@ function batteryClass(device) {
   return '';
 }
 
+/**
+ * Máy vẫn gửi heartbeat nhưng dịch vụ đọc thông báo không chạy (hay gặp trên
+ * Xiaomi sau khi khởi động lại): nhìn thì "đang hoạt động" mà không nhận gì.
+ */
+function deaf(device) {
+  return device.online && device.listening === false;
+}
+
 function avatarFor(pkg, name) {
   let hash = 0;
   for (let i = 0; i < pkg.length; i += 1) hash = (hash * 31 + pkg.charCodeAt(i)) >>> 0;
@@ -281,12 +289,14 @@ function renderSidebar() {
           const tip = [
             d.model || '',
             d.online ? 'đang hoạt động' : 'ngoại tuyến',
+            deaf(d) ? 'KHÔNG đọc được thông báo — mở app trên máy để kiểm tra' : '',
             bat ? 'pin ' + bat + (d.batteryAt ? ' — đo ' + relTime(d.batteryAt) : '') : '',
           ].filter(Boolean).join(' · ');
           return (
             '<button class="side-item' + sel + '" data-device="' + escapeHtml(d.id) + '">' +
             '<span class="status-dot' + (d.online ? ' online' : '') + '"></span>' +
             '<span class="label" title="' + escapeHtml(tip) + '">' + escapeHtml(d.name) + '</span>' +
+            (deaf(d) ? '<span class="deaf" title="' + escapeHtml(tip) + '">⚠</span>' : '') +
             (bat ? '<span class="bat' + batteryClass(d) + '">' + escapeHtml(bat) + '</span>' : '') +
             (d.unread ? '<span class="badge">' + d.unread + '</span>' : '<span class="count">' + d.total + '</span>') +
             '</button>'
@@ -472,6 +482,8 @@ function handleWsEvent(msg) {
         const wasOffline = !d.online;
         const batteryChanged =
           msg.data.battery !== null && msg.data.battery !== undefined && msg.data.battery !== d.battery;
+        const listeningChanged =
+          typeof msg.data.listening === 'boolean' && msg.data.listening !== d.listening;
 
         d.lastSeenAt = msg.data.lastSeenAt;
         d.online = true;
@@ -480,7 +492,8 @@ function handleWsEvent(msg) {
           d.charging = Boolean(msg.data.charging);
           d.batteryAt = msg.data.lastSeenAt;
         }
-        if (wasOffline || batteryChanged) renderSidebar();
+        if (listeningChanged) d.listening = msg.data.listening;
+        if (wasOffline || batteryChanged || listeningChanged) renderSidebar();
       }
       break;
     }

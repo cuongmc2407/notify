@@ -27,6 +27,7 @@ CREATE TABLE IF NOT EXISTS devices (
   battery_level   INTEGER,
   battery_charging INTEGER,
   battery_at      INTEGER,
+  listening       INTEGER,
   filter_version  INTEGER NOT NULL DEFAULT 0,
   created_at      INTEGER NOT NULL,
   last_seen_at    INTEGER,
@@ -80,6 +81,7 @@ for (const [column, definition] of [
   ['battery_level', 'INTEGER'],
   ['battery_charging', 'INTEGER'],
   ['battery_at', 'INTEGER'],
+  ['listening', 'INTEGER'],
   ['filter_version', 'INTEGER NOT NULL DEFAULT 0'],
 ]) {
   if (!deviceColumns.includes(column)) {

@@ -60,6 +60,20 @@ function recordBattery(deviceId, body, now) {
   return { level, charging: Boolean(charging), at: now };
 }
 
+const updateListening = db.prepare('UPDATE devices SET listening = ? WHERE id = ?');
+
+/**
+ * Dien thoai co dang nghe duoc thong bao khong. May van gui heartbeat deu ma
+ * listener chet (hay gap tren Xiaomi sau khi khoi dong lai) thi dashboard can
+ * canh bao, vi nhin "dang hoat dong" se tuong la moi thu van on. App cu khong
+ * gui truong nay -> giu NULL = khong ro.
+ */
+function recordListening(deviceId, body) {
+  if (typeof body?.listening !== 'boolean') return null;
+  updateListening.run(body.listening ? 1 : 0, deviceId);
+  return body.listening;
+}
+
 /* ---------- POST /api/pair ---------- */
 
 const findCode = db.prepare('SELECT * FROM pairing_codes WHERE code = ?');
@@ -137,6 +151,7 @@ function publicDevice(d) {
     battery: Number.isInteger(d.battery_level) ? d.battery_level : null,
     charging: Boolean(d.battery_charging),
     batteryAt: d.battery_at || null,
+    listening: d.listening === null || d.listening === undefined ? null : Boolean(d.listening),
   };
 }
 
@@ -208,6 +223,7 @@ router.post('/notifications', requireDeviceAuth, rateLimit, (req, res) => {
   })();
 
   const battery = recordBattery(deviceId, req.body, now);
+  const listening = recordListening(deviceId, req.body);
 
   if (inserted.length) {
     const placeholders = inserted.map(() => '?').join(',');
@@ -226,6 +242,7 @@ router.post('/notifications', requireDeviceAuth, rateLimit, (req, res) => {
     lastSeenAt: now,
     battery: battery?.level ?? null,
     charging: battery?.charging ?? null,
+    listening,
   });
 
   res.json({
@@ -260,11 +277,13 @@ router.post('/heartbeat', requireDeviceAuth, rateLimit, (req, res) => {
   const now = Date.now();
   touchDevice.run(now, req.device.id);
   const battery = recordBattery(req.device.id, req.body, now);
+  const listening = recordListening(req.device.id, req.body);
   hub.broadcast('device_seen', {
     id: req.device.id,
     lastSeenAt: now,
     battery: battery?.level ?? null,
     charging: battery?.charging ?? null,
+    listening,
   });
   res.json({
     ok: true,

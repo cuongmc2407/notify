@@ -12,6 +12,7 @@ import androidx.work.WorkManager
 import androidx.work.Worker
 import androidx.work.WorkerParameters
 import com.notifybridge.net.Uploader
+import com.notifybridge.service.NotifyListenerService
 import java.util.concurrent.TimeUnit
 
 /**
@@ -23,6 +24,7 @@ class UploadWorker(context: Context, params: WorkerParameters) : Worker(context,
     override fun doWork(): Result {
         // Chan cho gui xong: Worker tra Result la WorkManager coi nhu het viec,
         // he thong co the giet tien trinh truoc khi request kip di.
+        NotifyListenerService.ensureConnected(applicationContext)
         Uploader.heartbeatNow(applicationContext)
         return if (Uploader.drain(applicationContext)) Result.success() else Result.retry()
     }
