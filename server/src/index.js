@@ -34,9 +34,15 @@ app.use('/api', deviceRoutes.router);
 app.use(webRoutes);
 
 // Trang chu: chua dang nhap thi tra ve trang dang nhap.
+// Cung mot URL "/" ma tra hai file khac nhau tuy cookie, nen khong duoc de
+// trinh duyet cache: truoc day no hoi lai bang If-Modified-Since cua login.html
+// (Cloudflare hay bo ETag), login.html lai moi hon index.html -> server tra 304
+// -> dang nhap xong van thay trang dang nhap, phai Ctrl+F5 moi vao duoc.
 app.get('/', (req, res) => {
   const file = sessionIsValid(req.cookies?.sid) ? 'index.html' : 'login.html';
-  res.sendFile(path.join(PUBLIC_DIR, file));
+  res.setHeader('Cache-Control', 'no-store');
+  res.setHeader('Vary', 'Cookie');
+  res.sendFile(path.join(PUBLIC_DIR, file), { cacheControl: false, etag: false, lastModified: false });
 });
 
 app.use(
