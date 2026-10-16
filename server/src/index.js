@@ -2,6 +2,7 @@
 
 require('dotenv').config();
 
+const fs = require('fs');
 const http = require('http');
 const path = require('path');
 const express = require('express');
@@ -38,12 +39,36 @@ app.use(webRoutes);
 // trinh duyet cache: truoc day no hoi lai bang If-Modified-Since cua login.html
 // (Cloudflare hay bo ETag), login.html lai moi hon index.html -> server tra 304
 // -> dang nhap xong van thay trang dang nhap, phai Ctrl+F5 moi vao duoc.
-app.get('/', (req, res) => {
+app.get('/', (req, res, next) => {
   const file = sessionIsValid(req.cookies?.sid) ? 'index.html' : 'login.html';
+  let html;
+  try {
+    html = withAssetVersions(fs.readFileSync(path.join(PUBLIC_DIR, file), 'utf8'));
+  } catch (err) {
+    return next(err);
+  }
   res.setHeader('Cache-Control', 'no-store');
   res.setHeader('Vary', 'Cookie');
-  res.sendFile(path.join(PUBLIC_DIR, file), { cacheControl: false, etag: false, lastModified: false });
+  res.type('html').send(html);
 });
+
+// Cloudflare (Browser Cache TTL) ghi de Cache-Control cua file tinh thanh
+// max-age=14400, nen trinh duyet giu app.js cu 4 tieng sau moi lan cap nhat.
+// Gan ?v=<dau van tay file> vao duong dan: file doi thi URL doi, cache cu bi bo qua.
+function assetVersion(name) {
+  const st = fs.statSync(path.join(PUBLIC_DIR, name));
+  return st.size.toString(36) + Math.floor(st.mtimeMs).toString(36);
+}
+
+function withAssetVersions(html) {
+  return html.replace(/(["'])\/(app\.js|style\.css)\1/g, (m, q, name) => {
+    try {
+      return q + '/' + name + '?v=' + assetVersion(name) + q;
+    } catch {
+      return m;
+    }
+  });
+}
 
 app.use(
   express.static(PUBLIC_DIR, {

@@ -86,7 +86,10 @@ chmod 640 "$APP_DIR/.env"
 say "Cai systemd service"
 cp "$SRC_DIR/deploy/notify-server.service" /etc/systemd/system/notify-server.service
 systemctl daemon-reload
-systemctl enable --now notify-server
+systemctl enable notify-server
+# `enable --now` khong khoi dong lai service dang chay -> chay lai script de
+# cap nhat thi server van chay code cu trong RAM. Phai restart that su.
+systemctl restart notify-server
 sleep 2
 systemctl --no-pager status notify-server || true
 
