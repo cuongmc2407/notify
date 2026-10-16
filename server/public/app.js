@@ -8,7 +8,7 @@ const state = {
   cursor: null,
   hasMore: true,
   loading: false,
-  filter: { device: null, package: null, unread: false, q: '' },
+  filter: { device: null, package: null, unread: false, balance: false, q: '' },
   devices: [],
   apps: [],
   totals: { total: 0, unread: 0 },
@@ -27,6 +27,12 @@ const prefs = {
   },
   set desktop(v) {
     localStorage.setItem('nb.desktop', v ? '1' : '0');
+  },
+  get balanceOnly() {
+    return localStorage.getItem('nb.balanceOnly') === '1';
+  },
+  set balanceOnly(v) {
+    localStorage.setItem('nb.balanceOnly', v ? '1' : '0');
   },
   get theme() {
     return localStorage.getItem('nb.theme') || 'auto';
@@ -229,6 +235,9 @@ function renderFeed() {
   if (!state.items.length) {
     feed.innerHTML = state.loading
       ? ''
+      : state.filter.balance
+      ? '<div class="empty"><h2>Chưa có biến động số dư nào</h2><p>' +
+        'Đang bật lọc quảng cáo — bấm 💰 để hiện lại mọi thông báo.</p></div>'
       : '<div class="empty"><h2>Chưa có thông báo nào</h2><p>' +
         (state.devices.length
           ? 'Khi điện thoại nhận thông báo mới, nó sẽ hiện ở đây ngay lập tức.'
@@ -335,6 +344,7 @@ function feedQuery(extra) {
   if (state.filter.device) p.set('device', state.filter.device);
   if (state.filter.package) p.set('package', state.filter.package);
   if (state.filter.unread) p.set('unread', '1');
+  if (state.filter.balance) p.set('balance', '1');
   if (state.filter.q) p.set('q', state.filter.q);
   if (extra?.before) p.set('before', String(extra.before));
   return p.toString();
@@ -413,6 +423,7 @@ function matchesFilter(item) {
   if (f.device && item.deviceId !== f.device) return false;
   if (f.package && item.package !== f.package) return false;
   if (f.unread && item.isRead) return false;
+  if (f.balance && !item.isBalance) return false;
   if (f.q) {
     const hay = ((item.title || '') + ' ' + (item.body || '') + ' ' + (item.appName || '')).toLowerCase();
     if (!hay.includes(f.q.toLowerCase())) return false;
@@ -471,8 +482,11 @@ function handleWsEvent(msg) {
         state.fresh.add(item.id);
         scheduleRender();
       }
-      beep();
-      desktopNotify(item);
+      // Dang loc quang cao thi quang cao cung khong duoc keu.
+      if (!state.filter.balance || item.isBalance) {
+        beep();
+        desktopNotify(item);
+      }
       loadSidebarSoon();
       break;
     }
@@ -958,6 +972,17 @@ function bind() {
     $('unreadBtn').classList.toggle('active', on);
     setFilter({ unread: on });
   });
+
+  // Loc quang cao: chi hien bien dong so du. Nho lua chon qua cac lan mo trang.
+  $('balanceBtn').addEventListener('click', () => {
+    const on = !state.filter.balance;
+    prefs.balanceOnly = on;
+    $('balanceBtn').classList.toggle('active', on);
+    setFilter({ balance: on });
+    toast(on ? 'Chỉ hiện biến động số dư' : 'Hiện mọi thông báo');
+  });
+  state.filter.balance = prefs.balanceOnly;
+  $('balanceBtn').classList.toggle('active', state.filter.balance);
 
   // Am thanh
   const syncSound = () => {

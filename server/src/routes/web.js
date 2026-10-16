@@ -14,9 +14,13 @@ const {
 } = require('../auth');
 const hub = require('../hub');
 const filters = require('../filters');
+const { isBalanceChange } = require('../balance');
 const { publicNotification, publicDevice } = require('./device');
 
 const router = express.Router();
+
+// Cho SQL loc truc tiep, nhu vay phan trang/cuon vo han van dung khi an quang cao.
+db.function('is_balance', { deterministic: true }, (title, body) => (isBalanceChange(title, body) ? 1 : 0));
 
 const ONLINE_WINDOW_MS = 20 * 60000; // coi la online neu vua bao cao trong 20 phut
 const PAIRING_TTL_MS = 10 * 60000;
@@ -86,7 +90,8 @@ router.get('/api/feed', (req, res) => {
   const device = req.query.device ? String(req.query.device) : null;
   const pkg = req.query.package ? String(req.query.package) : null;
   const unread = req.query.unread === '1';
-  const q = req.query.q ? String(req.query.q).trim() : '';
+  const balance = req.query.balance === '1';
+  const q =req.query.q ? String(req.query.q).trim() : '';
 
   const where = [];
   const params = [];
@@ -105,6 +110,9 @@ router.get('/api/feed', (req, res) => {
   }
   if (unread) {
     where.push('n.is_read = 0');
+  }
+  if (balance) {
+    where.push('is_balance(n.title, n.body) = 1');
   }
   if (q) {
     where.push("(n.title LIKE ? ESCAPE '\\' OR n.body LIKE ? ESCAPE '\\' OR n.app_name LIKE ? ESCAPE '\\')");

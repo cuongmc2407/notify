@@ -6,6 +6,7 @@ const { db } = require('../db');
 const { requireDeviceAuth, newDeviceToken, hashToken } = require('../auth');
 const hub = require('../hub');
 const filters = require('../filters');
+const { isBalanceChange } = require('../balance');
 
 const router = express.Router();
 
@@ -268,6 +269,7 @@ function publicNotification(n) {
     postedAt: n.posted_at,
     receivedAt: n.received_at,
     isRead: Boolean(n.is_read),
+    isBalance: isBalanceChange(n.title, n.body),
   };
 }
 
