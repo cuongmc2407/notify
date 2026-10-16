@@ -13,6 +13,7 @@ const state = {
   apps: [],
   totals: { total: 0, unread: 0 },
   fresh: new Set(),
+  expanded: new Set(), // khoá các chồng thông báo đang mở
 };
 
 const prefs = {
@@ -249,42 +250,108 @@ function renderFeed() {
   const parts = [];
   let lastDay = null;
 
-  for (const item of state.items) {
-    const key = dayKey(item.postedAt);
+  for (const group of groupItems(state.items)) {
+    const top = group.items[0];
+    const key = dayKey(top.postedAt);
     if (key !== lastDay) {
       lastDay = key;
-      parts.push('<div class="day-sep">' + escapeHtml(dayLabel(item.postedAt)) + '</div>');
+      parts.push('<div class="day-sep">' + escapeHtml(dayLabel(top.postedAt)) + '</div>');
     }
 
-    const av = avatarFor(item.package, item.appName);
-    const classes = ['card'];
-    if (!item.isRead) classes.push('unread');
-    if (state.fresh.has(item.id)) classes.push('fresh');
-
-    parts.push(
-      '<article class="' + classes.join(' ') + '" data-id="' + item.id + '">' +
-        '<div class="avatar" style="background:' + av.color + '">' + escapeHtml(av.letter) + '</div>' +
-        '<div class="card-body">' +
-          '<div class="card-meta">' +
-            '<span class="app-name">' + escapeHtml(item.appName || item.package) + '</span>' +
-            '<span class="sep">·</span>' +
-            '<span class="chip">' + escapeHtml(item.deviceName || 'Không rõ máy') + '</span>' +
+    const n = group.items.length;
+    if (n === 1) {
+      parts.push(cardHtml(top));
+    } else if (state.expanded.has(group.key)) {
+      parts.push(
+        '<div class="stack-open">' +
+          '<div class="stack-head">' +
+            '<span>' + escapeHtml(top.appName || top.package) + ' · ' + n + ' thông báo</span>' +
+            '<button class="stack-collapse" data-collapse="' + escapeHtml(group.key) + '">Thu gọn ▴</button>' +
           '</div>' +
-          (item.title ? '<div class="card-title">' + escapeHtml(item.title) + '</div>' : '') +
-          (item.body ? '<div class="card-text">' + escapeHtml(item.body) + '</div>' : '') +
-        '</div>' +
-        '<div class="card-side">' +
-          '<span class="card-time" title="' + escapeHtml(new Date(item.postedAt).toLocaleString('vi-VN')) + '">' +
-            escapeHtml(relTime(item.postedAt)) + ' · ' + escapeHtml(clockTime(item.postedAt)) +
-          '</span>' +
-          '<button class="card-del" data-del="' + item.id + '" title="Xoá">✕</button>' +
-        '</div>' +
-      '</article>'
-    );
+          group.items.map((item) => cardHtml(item)).join('') +
+        '</div>'
+      );
+    } else {
+      parts.push(
+        '<div class="stack" data-group="' + escapeHtml(group.key) + '" title="Bấm để xem cả ' + n + ' thông báo">' +
+          cardHtml(top, {
+            unread: group.items.some((i) => !i.isRead),
+            fresh: group.items.some((i) => state.fresh.has(i.id)),
+            more: n - 1,
+          }) +
+          '<div class="stack-layer"></div>' +
+          (n > 2 ? '<div class="stack-layer l2"></div>' : '') +
+        '</div>'
+      );
+    }
   }
 
   feed.innerHTML = parts.join('');
   if (state.fresh.size) setTimeout(() => state.fresh.clear(), 1800);
+}
+
+/** Cùng ngày + cùng máy + cùng app thì gộp chung một chồng, như iPhone. */
+function groupKeyOf(item) {
+  return dayKey(item.postedAt) + '|' + item.deviceId + '|' + item.package;
+}
+
+/**
+ * state.items xếp mới nhất trước, nên mỗi nhóm đứng ở vị trí thông báo mới nhất
+ * của nó và nhóm vừa có tin mới tự nhảy lên đầu. Đang lọc theo một app hoặc
+ * đang tìm kiếm thì không gộp — lúc đó người dùng muốn thấy từng cái.
+ */
+function groupItems(items) {
+  if (state.filter.package || state.filter.q) {
+    return items.map((item) => ({ key: String(item.id), items: [item] }));
+  }
+  const groups = [];
+  const byKey = new Map();
+  for (const item of items) {
+    const key = groupKeyOf(item);
+    let group = byKey.get(key);
+    if (!group) {
+      group = { key, items: [] };
+      byKey.set(key, group);
+      groups.push(group);
+    }
+    group.items.push(item);
+  }
+  return groups;
+}
+
+/** opts (chỉ dùng cho thẻ trên cùng của chồng đang gộp): unread, fresh, more. */
+function cardHtml(item, opts) {
+  const stacked = Boolean(opts);
+  const unread = stacked ? opts.unread : !item.isRead;
+  const fresh = stacked ? opts.fresh : state.fresh.has(item.id);
+
+  const av = avatarFor(item.package, item.appName);
+  const classes = ['card'];
+  if (unread) classes.push('unread');
+  if (fresh) classes.push('fresh');
+
+  return (
+    '<article class="' + classes.join(' ') + '" data-id="' + item.id + '">' +
+      '<div class="avatar" style="background:' + av.color + '">' + escapeHtml(av.letter) + '</div>' +
+      '<div class="card-body">' +
+        '<div class="card-meta">' +
+          '<span class="app-name">' + escapeHtml(item.appName || item.package) + '</span>' +
+          '<span class="sep">·</span>' +
+          '<span class="chip">' + escapeHtml(item.deviceName || 'Không rõ máy') + '</span>' +
+          (stacked ? '<span class="stack-more">+' + opts.more + ' thông báo trước ▾</span>' : '') +
+        '</div>' +
+        (item.title ? '<div class="card-title">' + escapeHtml(item.title) + '</div>' : '') +
+        (item.body ? '<div class="card-text">' + escapeHtml(item.body) + '</div>' : '') +
+      '</div>' +
+      '<div class="card-side">' +
+        '<span class="card-time" title="' + escapeHtml(new Date(item.postedAt).toLocaleString('vi-VN')) + '">' +
+          escapeHtml(relTime(item.postedAt)) + ' · ' + escapeHtml(clockTime(item.postedAt)) +
+        '</span>' +
+        // Chồng đang gộp thì không cho xoá — dễ tưởng là xoá cả chồng. Mở ra rồi xoá từng cái.
+        (stacked ? '' : '<button class="card-del" data-del="' + item.id + '" title="Xoá">✕</button>') +
+      '</div>' +
+    '</article>'
+  );
 }
 
 function renderSidebar() {
@@ -928,8 +995,22 @@ function bind() {
     searchTimer = setTimeout(() => setFilter({ q: value.trim() }), 300);
   });
 
-  // Xoa 1 thong bao
+  // Xoa 1 thong bao / mo, gop chong thong bao
   $('feed').addEventListener('click', async (e) => {
+    const collapse = e.target.closest('[data-collapse]');
+    if (collapse) {
+      state.expanded.delete(collapse.dataset.collapse);
+      scheduleRender();
+      return;
+    }
+    const stack = e.target.closest('[data-group]');
+    // Dang boi den chu de copy thi dung mo chong.
+    if (stack && !String(window.getSelection?.() || '')) {
+      state.expanded.add(stack.dataset.group);
+      scheduleRender();
+      return;
+    }
+
     const del = e.target.closest('[data-del]');
     if (!del) return;
     const id = Number(del.dataset.del);

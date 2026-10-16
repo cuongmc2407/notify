@@ -653,6 +653,70 @@ select {
   background: var(--bg-sunken);
 }
 
+/* ---------- chong thong bao gop (nhu iPhone) ---------- */
+.stack {
+  margin-bottom: 7px;
+  cursor: pointer;
+}
+.stack .card {
+  position: relative;
+  z-index: 1;
+  margin-bottom: 0;
+  transition: transform 0.12s;
+}
+.stack:hover .card {
+  transform: translateY(-1px);
+}
+/* Cac "mep" the nam ben duoi, ho ra mot chut cho biet con thong bao khac. */
+.stack-layer {
+  height: 6px;
+  margin: 0 10px;
+  border: 1px solid var(--border);
+  border-top: 0;
+  border-radius: 0 0 var(--radius) var(--radius);
+  background: var(--bg-elevated);
+  box-shadow: var(--shadow);
+}
+.stack-layer.l2 {
+  margin: 0 22px;
+  opacity: 0.7;
+}
+.stack-more {
+  color: var(--accent);
+  font-weight: 600;
+}
+.stack-open {
+  margin-bottom: 7px;
+  padding: 6px;
+  border-radius: calc(var(--radius) + 4px);
+  background: var(--bg-sunken);
+}
+.stack-open .card:last-child {
+  margin-bottom: 0;
+}
+.stack-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 2px 6px 7px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+.stack-collapse {
+  border: 1px solid var(--border);
+  background: var(--bg-elevated);
+  color: var(--text);
+  font: inherit;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+.stack-collapse:hover {
+  border-color: var(--border-strong);
+}
+
 .empty {
   text-align: center;
   padding: 64px 16px;
